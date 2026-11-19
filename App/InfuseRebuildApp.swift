@@ -5,7 +5,7 @@ struct InfuseRebuildApp: App {
     @StateObject private var store = AppStore()
     var body: some Scene {
         WindowGroup {
-            RootView().environmentObject(store).preferredColorScheme(.dark).tint(.orange)
+            PrivacyGate { RootView() }.environmentObject(store).preferredColorScheme(.dark).tint(.orange)
                 .task { await store.load() }
                 .onOpenURL { url in
                     if url.isFileURL { Task { await store.importFiles([url]) } }
