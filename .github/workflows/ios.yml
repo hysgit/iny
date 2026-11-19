@@ -9,8 +9,19 @@ concurrency:
   group: iny-ios-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: '6.0.3'
+      - name: Run storage and WebDAV regression tests
+        run: swift test
   compile:
-    runs-on: macos-15
+    needs: core
+    runs-on: macos-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
