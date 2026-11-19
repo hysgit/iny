@@ -45,7 +45,7 @@ final class PlayerModel: ObservableObject {
         try AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
         try AVAudioSession.sharedInstance().setActive(true)
         #if canImport(MobileVLCKit)
-        usesVLC = preferVLC || resource.url.scheme == "smb" || resource.username?.isEmpty == false || subtitle != nil
+        usesVLC = resource.url.pathExtension != "movpkg" && (preferVLC || resource.url.scheme == "smb" || resource.username?.isEmpty == false || subtitle != nil)
         if usesVLC {
             let media = VLCMedia(url: resource.url)
             media.addOption(":network-caching=1500")

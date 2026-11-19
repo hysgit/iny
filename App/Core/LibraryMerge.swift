@@ -30,7 +30,7 @@ enum LibraryMerge {
             if let index = local.items.firstIndex(where: { $0.id == item.id || (item.contentID != nil && $0.contentID == item.contentID) }) {
                 let current = local.items[index]
                 if (item.metadataChangedAt ?? item.modifiedAt ?? item.addedAt) > (current.metadataChangedAt ?? current.modifiedAt ?? current.addedAt) {
-                    item.id = current.id; item.localFilename = current.localFilename; item.subtitleFilename = current.subtitleFilename; item.posterFilename = current.posterFilename
+                    item.id = current.id; item.localFilename = current.localFilename; item.systemAssetPath = current.systemAssetPath; item.subtitleFilename = current.subtitleFilename; item.posterFilename = current.posterFilename
                 } else { item = current }
                 let remote = incoming.items.first { $0.id == item.id || ($0.contentID != nil && $0.contentID == item.contentID) }!
                 if (remote.lastPlayedAt ?? .distantPast) > (current.lastPlayedAt ?? .distantPast) {
@@ -42,7 +42,7 @@ enum LibraryMerge {
                 else { item.watched = current.watched; item.watchedChangedAt = current.watchedChangedAt }
                 item.modifiedAt = max(remote.modifiedAt ?? .distantPast, current.modifiedAt ?? .distantPast); local.items[index] = item
             } else {
-                item.localFilename = nil; item.subtitleFilename = nil; item.posterFilename = nil; local.items.append(item)
+                item.localFilename = nil; item.systemAssetPath = nil; item.subtitleFilename = nil; item.posterFilename = nil; local.items.append(item)
             }
         }
         local.items.removeAll { deleted[$0.id.uuidString] != nil || $0.sourceID.map { sourcesDeleted[$0.uuidString] != nil } ?? false }

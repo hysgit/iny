@@ -14,6 +14,7 @@ struct SourcesView: View {
                 Button("导入视频", systemImage: "iphone.and.arrow.forward") { importing = true }
                 Button("导入整个文件夹", systemImage: "folder.badge.plus") { folderImport = true }
                 NavigationLink("无线传输") { WirelessTransferView() }
+                NavigationLink("下载任务") { DownloadsView() }
                 NavigationLink { LocalFilesView() } label: { Label("本地视频", systemImage: "internaldrive") }
             }
             Section("网络共享与媒体服务器") {

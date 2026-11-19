@@ -9,7 +9,7 @@ final class WirelessTransfer: NSObject, ObservableObject {
     @Published var address: URL?
     @Published var password = ""
     @Published var error: String?
-    var imported: ((URL) async -> Void)?
+    var imported: ((URL) async throws -> Void)?
     #if canImport(GCDWebServer)
     private var server: GCDWebUploader?
     #endif
@@ -41,8 +41,8 @@ extension WirelessTransfer: GCDWebUploaderDelegate {
     nonisolated func webUploader(_ uploader: GCDWebUploader, didUploadFileAtPath path: String) {
         let url = URL(fileURLWithPath: path)
         Task { @MainActor in
-            await imported?(url)
-            try? FileManager.default.removeItem(at: url)
+            do { try await imported?(url); try FileManager.default.removeItem(at: url) }
+            catch { self.error = error.localizedDescription }
         }
     }
 }

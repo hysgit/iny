@@ -26,7 +26,7 @@ actor CloudLibrarySync {
         var merged = snapshot; LibraryMerge.apply(incoming, to: &merged)
         var changes: [CKRecord] = []
         for item in merged.items {
-            var syncItem = item; syncItem.localFilename = nil; syncItem.subtitleFilename = nil; syncItem.posterFilename = nil
+            var syncItem = item; syncItem.localFilename = nil; syncItem.systemAssetPath = nil; syncItem.subtitleFilename = nil; syncItem.posterFilename = nil
             var payload = LibrarySnapshot(); payload.items = [syncItem]
             let key = item.contentID.map { "content-" + $0 } ?? "item-" + item.id.uuidString
             let record = CKRecord(recordType: "InyLibrary", recordID: CKRecord.ID(recordName: key))

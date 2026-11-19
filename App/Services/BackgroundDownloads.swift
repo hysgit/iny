@@ -37,7 +37,8 @@ final class BackgroundDownloads: NSObject, ObservableObject {
             try FileManager.default.createDirectory(at: Self.directory, withIntermediateDirectories: true)
             let index = Self.directory.appendingPathComponent("queue.json")
             if jobs.isEmpty, FileManager.default.fileExists(atPath: index.path) { jobs = Dictionary(uniqueKeysWithValues: try JSONDecoder().decode([DownloadRecord].self, from: Data(contentsOf: index)).map { ($0.id, $0) }) }
-            for task in await http.allTasks + hls.allTasks { if let text = task.taskDescription, let id = UUID(uuidString: text) { tasks[id] = task } }
+            let httpTasks = await http.allTasks; let assetTasks = await hls.allTasks
+            for task in httpTasks + assetTasks { if let text = task.taskDescription, let id = UUID(uuidString: text) { tasks[id] = task } }
             publish()
         } catch { store.error = error.localizedDescription }
     }
@@ -154,6 +155,13 @@ extension BackgroundDownloads: URLSessionDownloadDelegate, AVAssetDownloadDelega
     nonisolated func urlSession(_ session: URLSession, assetDownloadTask: AVAssetDownloadTask, didFinishDownloadingTo location: URL) {
         guard let id = assetDownloadTask.taskDescription.flatMap(UUID.init(uuidString:)) else { return }
         Task { @MainActor in await completed(id, file: location, managed: true) }
+    }
+    nonisolated func urlSession(_ session: URLSession, assetDownloadTask: AVAssetDownloadTask, didLoad timeRange: CMTimeRange, totalTimeRangesLoaded loadedTimeRanges: [NSValue], timeRangeExpectedToLoad: CMTimeRange) {
+        guard let id = assetDownloadTask.taskDescription.flatMap(UUID.init(uuidString:)) else { return }
+        let expected = CMTimeGetSeconds(timeRangeExpectedToLoad.duration)
+        let loaded = loadedTimeRanges.reduce(0.0) { $0 + CMTimeGetSeconds($1.timeRangeValue.duration) }
+        guard expected.isFinite, expected > 0, loaded.isFinite else { return }
+        Task { @MainActor in jobs[id]?.progress = min(1, loaded / expected); publish(); if Date().timeIntervalSince(lastSaved) > 1 { save() } }
     }
     nonisolated func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
         guard let identifier = session.configuration.identifier else { return }

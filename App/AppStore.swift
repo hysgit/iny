@@ -8,7 +8,6 @@ final class AppStore: ObservableObject {
     @Published var error: String?
     @Published var activity: String?
     @Published var downloadProgress: [UUID: Double] = [:]
-    private var downloads: [UUID: Task<Void, Never>] = [:]
     let repository: LibraryRepository
 
     init() {
@@ -17,7 +16,7 @@ final class AppStore: ObservableObject {
     }
 
     func load() async {
-        do { try await refresh(); loaded = true }
+        do { try await refresh(); loaded = true; await BackgroundDownloads.shared.bind(self) }
         catch { self.error = "媒体库读取失败，原文件已保留。\n" + error.localizedDescription }
     }
 
@@ -70,7 +69,7 @@ final class AppStore: ObservableObject {
     }
 
     func removeSource(_ source: MediaSource) async throws {
-        for item in library.items where item.sourceID == source.id { downloads[item.id]?.cancel() }
+        for item in library.items where item.sourceID == source.id { BackgroundDownloads.shared.cancel(item.id) }
         _ = try await repository.removeSource(source.id)
         try await refresh()
         try KeychainVault.delete(account: source.id.uuidString)
@@ -107,6 +106,10 @@ final class AppStore: ObservableObject {
     }
 
     func resource(_ item: MediaItem) async throws -> PlaybackResource {
+        if let path = item.systemAssetPath {
+            guard path.hasPrefix("Library/"), !path.split(separator: "/").contains("..") else { throw AppError.invalidURL }
+            return PlaybackResource(url: URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(path))
+        }
         if let filename = item.localFilename { return PlaybackResource(url: try await repository.localURL(filename)) }
         if let url = item.directURL { return PlaybackResource(url: url) }
         guard let source = library.sources.first(where: { $0.id == item.sourceID }), let id = item.remoteID else { throw AppError.message("影片来源不存在，请重新添加。") }
@@ -183,36 +186,14 @@ final class AppStore: ObservableObject {
     }
 
     func remove(_ item: MediaItem) async throws {
-        downloads[item.id]?.cancel()
+        BackgroundDownloads.shared.cancel(item.id)
         _ = try await repository.remove(item.id)
         try await refresh()
     }
 
     func download(_ item: MediaItem) {
-        guard downloads[item.id] == nil else { return }
-        downloads[item.id] = Task {
-            downloadProgress[item.id] = 0
-            defer { downloads[item.id] = nil; downloadProgress[item.id] = nil }
-            await perform {
-                let resource = try await resource(item)
-                guard ["http", "https"].contains(resource.url.scheme ?? ""), resource.url.pathExtension.lowercased() != "m3u8" else {
-                    throw AppError.message("离线下载支持 HTTP 视频文件；SMB 和 HLS 请先通过“文件”导入。")
-                }
-                var request = URLRequest(url: resource.url)
-                if let user = resource.username, !user.isEmpty {
-                    request.setValue("Basic " + Data((user + ":" + (resource.password ?? "")).utf8).base64EncodedString(), forHTTPHeaderField: "Authorization")
-                }
-                let id = item.id
-                let temporary = try await DownloadService().download(request) { [weak self] value in
-                    Task { @MainActor in self?.downloadProgress[id] = value }
-                }
-                defer { try? FileManager.default.removeItem(at: temporary) }
-                try Task.checkCancellation()
-                _ = try await repository.importFile(temporary, title: item.title)
-                try await refresh()
-            }
-        }
+        BackgroundDownloads.shared.start(item, store: self)
     }
 
-    func cancelDownload(_ id: UUID) { downloads[id]?.cancel() }
+    func cancelDownload(_ id: UUID) { BackgroundDownloads.shared.cancel(id) }
 }

@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct InyApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     init() { CastService.configure() }
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var store = AppStore()

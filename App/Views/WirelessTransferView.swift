@@ -14,7 +14,7 @@ struct WirelessTransferView: View {
             } else { Button("开启无线传输") { transfer.start() } }
             if let error = transfer.error { Text(error).foregroundStyle(.red) }
         }.navigationTitle("无线传输")
-        .task { transfer.imported = { url in await store.importFiles([url]) } }
+        .task { transfer.imported = { url in _ = try await store.repository.importFile(url); try await store.refresh() } }
         .onDisappear { transfer.stop() }
     }
 }
