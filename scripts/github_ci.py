@@ -31,6 +31,8 @@ def credential(interactive=False):
     values = dict(line.split("=", 1) for line in result.stdout.splitlines() if "=" in line)
     if not values.get("password"):
         raise RuntimeError("GitHub login is required. Complete the credential-manager account selection, then retry.")
+    # 像一次成功的 Git 登录一样，将 OAuth 结果交回现有凭证助手保管；不写入工程。
+    subprocess.run([str(helper), "store"], input=result.stdout, capture_output=True, text=True, env=env, check=True, timeout=15)
     return values["password"]
 
 
@@ -39,18 +41,26 @@ def main():
     parser.add_argument("--interactive", action="store_true")
     parser.add_argument("--watch-only", action="store_true")
     args = parser.parse_args()
-    token = credential(args.interactive)
+    try:
+        token = credential(args.interactive)
+    except RuntimeError:
+        if not args.watch_only:
+            raise
+        token = None
     opener = urllib.request.build_opener(NoAuthRedirect())
 
     def api(path, method="GET", payload=None, raw=False):
+        headers = {"Accept": "application/vnd.github+json", "Content-Type": "application/json"}
+        if token:
+            headers["Authorization"] = "Bearer " + token
         request = urllib.request.Request("https://api.github.com" + path, method=method,
             data=json.dumps(payload).encode() if payload is not None else None,
-            headers={"Authorization": "Bearer " + token, "Accept": "application/vnd.github+json", "Content-Type": "application/json"})
+            headers=headers)
         with opener.open(request, timeout=30) as response:
             content = response.read()
         return content if raw else (json.loads(content) if content else None)
 
-    user = api("/user")["login"]
+    user = api("/user")["login"] if token else "hysgit"
     if user != "hysgit":
         raise RuntimeError("Expected the existing hysgit account; no repository was changed")
     repo_path = "/repos/hysgit/iny"
@@ -69,7 +79,7 @@ def main():
         runs = api(repo_path + "/actions/runs?branch=master&per_page=10")["workflow_runs"]
         matches = [run for run in runs if run["head_sha"] == sha]
         if not matches:
-            if attempt == 2:
+            if attempt == 2 and token:
                 api(repo_path + "/actions/workflows/ios.yml/dispatches", "POST", {"ref": "master"})
             time.sleep(20)
             continue
