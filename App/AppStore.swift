@@ -93,6 +93,7 @@ final class AppStore: ObservableObject {
             #else
             throw AppError.message("此版本没有 SFTP 客户端。")
             #endif
+        case .dropbox, .googleDrive, .oneDrive, .aliyun: return try await CloudDriveClient(source: source, secret: secret).list(parent: parent)
         }
     }
 
@@ -130,6 +131,7 @@ final class AppStore: ObservableObject {
             #else
             throw AppError.message("此版本没有 SFTP 客户端。")
             #endif
+        case .dropbox, .googleDrive, .oneDrive, .aliyun: return try await CloudDriveClient(source: source, secret: secret).playback(id: id)
         default: return try await MediaServerClient(source: source, secret: secret).playback(id: id)
         }
     }

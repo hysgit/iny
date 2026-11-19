@@ -91,7 +91,11 @@ struct CloudDriveClient {
             let drive = try await driveID(); link = try await json("openFile/getDownloadUrl", body: ["drive_id": drive, "file_id": id])["url"] as? String
         case .googleDrive:
             let credential = try await CloudTokenBroker.shared.resolve(source, fallback: secret)
-            return PlaybackResource(url: try URLTools.endpoint(Self.endpoint(.googleDrive), "files/\(id)", query: ["alt": "media"]), bearerToken: credential.token)
+            let info = try await json("files/\(id)", query: ["fields": "size"])
+            guard let count = info["size"] as? String, let size = Int64(count) else { throw AppError.invalidResponse }
+            let remote = try URLTools.endpoint(Self.endpoint(.googleDrive), "files/\(id)", query: ["alt": "media"])
+            let local = try await LocalMediaServer.shared.remote(remote, length: size, bearer: credential.token)
+            return PlaybackResource(url: local)
         default: throw AppError.invalidResponse
         }
         guard let link, let url = URL(string: link), url.scheme == "https" else { throw AppError.invalidResponse }

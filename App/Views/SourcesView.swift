@@ -118,6 +118,11 @@ struct SourceForm: View {
     @State private var password = ""
     @State private var share = ""
     @State private var hostKey = ""
+    @State private var clientID = ""
+    @State private var clientSecret = ""
+    @State private var redirect = "iny://oauth"
+    @State private var authorizedSecret: SourceSecret?
+    @State private var authorization: CloudOAuth?
     @State private var saving = false
     @State private var error: String?
     var body: some View {
@@ -125,19 +130,27 @@ struct SourceForm: View {
             Form {
                 Picker("类型", selection: $kind) { ForEach(SourceKind.allCases) { Text($0.title).tag($0) } }
                 TextField("名称", text: $name)
-                TextField(kind == .smb ? "smb://192.168.1.10" : "https://nas.example.com:8096", text: $address).keyboardType(.URL)
+                if kind.isCloud {
+                    Section("云盘授权") {
+                        TextField("OAuth Client ID", text: $clientID)
+                        SecureField("Client Secret（需要时填写）", text: $clientSecret)
+                        TextField("回调地址", text: $redirect)
+                        Button("登录 \(kind.title)") { Task { await authorize() } }.disabled(saving || clientID.isEmpty)
+                    }
+                } else { TextField(kind == .smb ? "smb://192.168.1.10" : "https://nas.example.com:8096", text: $address).keyboardType(.URL) }
                 if kind == .smb || kind == .nfs { TextField(kind == .nfs ? "导出路径，例如 /volume1/video" : "共享名称，例如 Movies", text: $share) }
                 if kind == .sftp { TextField("OpenSSH 主机公钥", text: $hostKey) }
                 if kind != .plex { TextField("用户名", text: $username) }
-                SecureField(kind == .plex ? "Plex 访问令牌" : "密码", text: $password)
+                SecureField(kind.isCloud ? "Access Token（也可直接填写）" : (kind == .plex ? "Plex 访问令牌" : "密码"), text: $password)
                 if kind == .plex { Text("填写自己的 Plex Media Server 地址与访问令牌。当前使用服务器直连。").font(.footnote).foregroundStyle(.secondary) }
                 if let error { Text(error).foregroundStyle(.red) }
                 if saving { ProgressView("验证连接中…") }
             }.textInputAutocapitalization(.never).autocorrectionDisabled()
             .navigationTitle("添加来源").toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() }.disabled(saving) }
-                ToolbarItem(placement: .confirmationAction) { Button("连接") { Task { await save() } }.disabled(address.isEmpty || saving) }
+                ToolbarItem(placement: .confirmationAction) { Button("连接") { Task { await save() } }.disabled((address.isEmpty && !kind.isCloud) || saving) }
             }.interactiveDismissDisabled(saving)
+            .onChange(of: kind) { _, _ in password = ""; authorizedSecret = nil }
         }
     }
     private func save() async {
@@ -145,11 +158,20 @@ struct SourceForm: View {
         defer { saving = false }
         do {
             let scheme = [.ftp, .sftp, .nfs].contains(kind) ? kind.rawValue : nil
-            let url = try URLTools.server(address, smb: kind == .smb, scheme: scheme)
+            let url = try kind.isCloud ? CloudDriveClient.endpoint(kind) : URLTools.server(address, smb: kind == .smb, scheme: scheme)
             if kind == .smb, share.contains("/") || share.isEmpty { throw AppError.message("共享名称不能为空，且不能包含斜线。") }
             let source = MediaSource(name: name.isEmpty ? kind.title : name, kind: kind, endpoint: url, username: username, share: share, hostKey: hostKey.isEmpty ? nil : hostKey)
-            try await store.addSource(source, secret: SourceSecret(password: kind == .plex ? "" : password, token: kind == .plex ? password : ""))
+            let secret = authorizedSecret ?? SourceSecret(password: kind == .plex || kind.isCloud ? "" : password, token: kind == .plex || kind.isCloud ? password : "")
+            try await store.addSource(source, secret: secret)
             dismiss()
+        } catch { self.error = error.localizedDescription }
+    }
+    private func authorize() async {
+        saving = true; error = nil; defer { saving = false }
+        do {
+            let flow = CloudOAuth(); authorization = flow
+            let value = try await flow.signIn(kind: kind, clientID: clientID, clientSecret: clientSecret, redirect: redirect)
+            authorizedSecret = value; password = value.token
         } catch { self.error = error.localizedDescription }
     }
 }
