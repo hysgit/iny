@@ -30,15 +30,17 @@ def generate():
         references.append(ref)
 
     info = add("info", 'isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "App/Info.plist"; sourceTree = SOURCE_ROOT;')
+    assets = add("assets", 'isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "App/Assets.xcassets"; sourceTree = SOURCE_ROOT;')
+    assets_build = add("assetsBuild", f"isa = PBXBuildFile; fileRef = {assets};")
     product = add("product", 'isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Iny.app; sourceTree = BUILT_PRODUCTS_DIR;')
     products = add("products", f"isa = PBXGroup; children = ({product},); name = Products; sourceTree = \"<group>\";")
-    group = add("rootGroup", f"isa = PBXGroup; children = ({','.join(references + [info, products])},); sourceTree = \"<group>\";")
+    group = add("rootGroup", f"isa = PBXGroup; children = ({','.join(references + [info, assets, products])},); sourceTree = \"<group>\";")
     package = add("smbPackage", 'isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/amosavian/AMSMB2.git"; requirement = { kind = exactVersion; version = 3.4.0; };')
     dependency = add("smbProduct", f"isa = XCSwiftPackageProductDependency; package = {package}; productName = AMSMB2;")
     framework = add("smbBuild", f"isa = PBXBuildFile; productRef = {dependency};")
     source_phase = add("sources", f"isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = ({','.join(sources)},); runOnlyForDeploymentPostprocessing = 0;")
     frameworks = add("frameworks", f"isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = ({framework},); runOnlyForDeploymentPostprocessing = 0;")
-    resources = add("resources", "isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;")
+    resources = add("resources", f"isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = ({assets_build},); runOnlyForDeploymentPostprocessing = 0;")
 
     def configurations(prefix, settings):
         configs = []
@@ -63,6 +65,7 @@ def generate():
         "TARGETED_DEVICE_FAMILY": "1,2", "CODE_SIGN_STYLE": "Automatic",
         "LD_RUNPATH_SEARCH_PATHS": "$(inherited) @executable_path/Frameworks", "SUPPORTS_MACCATALYST": "NO",
         "SWIFT_EMIT_LOC_STRINGS": "YES",
+        "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
     })
     target = add("target", f"isa = PBXNativeTarget; buildConfigurationList = {target_config}; buildPhases = ({source_phase},{frameworks},{resources},); buildRules = (); dependencies = (); name = Iny; packageProductDependencies = ({dependency},); productName = Iny; productReference = {product}; productType = \"com.apple.product-type.application\";")
     project = add("project", f"isa = PBXProject; attributes = {{ BuildIndependentTargetsInParallel = YES; LastSwiftUpdateCheck = 1600; LastUpgradeCheck = 1600; }}; buildConfigurationList = {project_config}; compatibilityVersion = \"Xcode 14.0\"; developmentRegion = zh_CN; hasScannedForEncodings = 0; knownRegions = (en, zh_CN, Base,); mainGroup = {group}; packageReferences = ({package},); productRefGroup = {products}; projectDirPath = \"\"; projectRoot = \"\"; targets = ({target},);")
