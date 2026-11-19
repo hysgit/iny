@@ -22,6 +22,8 @@
 | E-005 | [云构建 44524740188](https://github.com/hysgit/iny/actions/runs/44524740188) | 提交 `8d87bbf` 的 Linux 与 macOS 各 16 项测试通过，iOS 模拟器应用编译成功 | GitHub Actions 构建日志；本机副本位于 `analysis/cloud/44524740188/` |
 | E-006 | `scripts/apple_account.py` 的 API 响应 | Iny Bundle ID 已注册，资源 ID `H2G5323M9F`；检查时尚无 Iny App 记录 | 需持有本机授权 Apple API 私钥；公开源码与报告不包含私钥或 JWT |
 | E-007 | 当前 `App/` 与 `Iny.xcodeproj/` | 新 SwiftUI 界面、VLC/AVPlayer、媒体库事务及网络来源实现 | `python scripts/check_sources.py --swift-parser`；Xcode 与 Swift 测试结果分别记录，不混同语法检查 |
+| E-008 | [云构建 44525758708](https://github.com/hysgit/iny/actions/runs/44525758708) | 提交 `860d9ed` 的 iPhone/iPad 安装、启动与截图成功；本机已逐图复核 | `analysis/cloud/44525758708/artifacts/previews/`，运行 `python scripts/fetch_artifacts.py 44525758708 --previews-only` 取回 |
+| E-009 | 独立 Apple App 与内测组 API/UI | Iny App ID `6836777599`；“Iny 内测”组 `890170cc-8b9c-4fa3-8933-562df45227d0`，内部组 | 本机记录 `analysis/apple-app.json`；不含账号密码、API 私钥或 JWT |
 
 ### Findings
 
@@ -30,14 +32,14 @@
 | F-001 | n/a_re | E-001、E-002、E-003 | high | 主程序加载命令 | validated | 主程序仍标记 App Store 加密；不能把字符串/资源提取称为完整源码恢复 |
 | F-002 | n/a_re | E-imports、E-004 | high | 配置、依赖及本地化资源 | validated | 可建立可复查的功能入口清单；文案或框架存在不证明具体运行行为 |
 | F-003 | n/a_re | E-005、E-007 | high | 新核心包与原生工程 | validated | 新实现已经过真实 Swift 测试和一轮 iOS 编译；不代表真实 NAS、所有编码或完整原版行为验收 |
-| F-004 | n/a_re | E-006 | high | Apple 新应用配置 | validated | Bundle ID 与 App 记录是不同步骤；当前未完成 TestFlight 发布 |
+| F-004 | n/a_re | E-006、E-009 | high | Apple 新应用配置 | validated | Bundle ID、独立 App 记录和内部组均已建立；当前未完成签名及 TestFlight 发布 |
 
 ### P-001
 
 - path_type：solve
 - start：用户提供的 IPA。
 - goal：建立可维护、可编译的独立 iPhone/iPad 工程，并按完整功能范围继续重建。
-- steps：E-001 固定样本身份 → E-002/E-003 确认可读范围和加密限制 → E-imports/E-004 建立功能证据 → E-007 重写核心与界面 → E-005 实际云编译及回归 → E-006 独立应用标识 → 待授权签名、创建 App 记录并发布 TestFlight。
+- steps：E-001 固定样本身份 → E-002/E-003 确认可读范围和加密限制 → E-imports/E-004 建立功能证据 → E-007 重写核心与界面 → E-005/E-008 实际云编译、回归及双设备启动 → E-006/E-009 独立应用标识、App 记录和内测组 → 待授权签名并发布 TestFlight。
 
 ## 新工程实现
 
@@ -54,13 +56,13 @@
 - 验证路径穿越、来源删除后迟到请求、跨来源去重和进度/收藏同时修改。
 - 验证 WebDAV 命名空间、相对地址、中文、XML 转义、失败属性及跨源条目。
 - 云测试发现 Linux XMLParser 对截断 XML 的返回行为不足以单独判断完整性；新增错误回调、元素深度和根节点校验后，16 项测试全部通过。
-- 最新提交新增实际 iPhone/iPad 安装、启动与截图流程，其结果待本轮云构建完成后补记。
+- iPhone/iPad 安装、启动与截图流程已通过并逐图复核。另加真实 H.264 样片的播放/暂停/保存进度 UI 验收，当前仍在运行，不能把启动成功写成已验证实际解码。
 
 ## 未完成与限制
 
 完整待办见 [功能对照](FEATURES.md)，包括 NFS/FTP/SFTP 直连、独立云盘 OAuth、iCloud/Trakt 同步、Google Cast、后台断点下载以及更多字幕和高级音视频设置。原包加密区、原应用运行行为、真实媒体服务和硬件表现均未被静态资源证明。
 
-签名与 TestFlight 工作流已写入独立仓库配置，但向 GitHub 保存现有 Apple API 私钥及签名材料的执行请求被自动审批拒绝。此步骤未执行，也没有新建签名证书或上传私钥。Apple 新 App 记录将按用户要求在浏览器恢复后由代理创建。
+签名与 TestFlight 工作流已写入独立仓库配置，但向 GitHub 保存现有 Apple API 私钥及签名材料的执行请求被自动审批拒绝。此步骤未执行，也没有新建签名证书或上传私钥。Apple 新 App 记录与内测组已通过独立浏览器创建；未向其他应用的测试组分发，也未邀请其他测试员。
 
 ## 时间线
 

@@ -33,9 +33,9 @@ swift test
 
 ## 云端编译与发布
 
-[Iny iOS](.github/workflows/ios.yml) 先在 Ubuntu 24.04 执行 Swift 核心测试，再在 macOS 编译应用，并在 iPhone、iPad 模拟器安装、启动和截图。构建产物包括模拟器安装包、构建日志和真实界面截图。
+[Iny iOS](.github/workflows/ios.yml) 先在 Ubuntu 24.04 执行 Swift 核心测试，再在 macOS 编译应用。双设备安装启动已通过；当前新增的播放回归在 iPhone 模拟器用独立 H.264 样片验证播放、暂停和进度保存。构建产物包括模拟器安装包、构建日志和真实界面截图。
 
-[Iny TestFlight](.github/workflows/testflight.yml) 为手动触发的独立发布流程。它需要 Iny 自己的描述文件与签名 Secrets，以及 Apple 后台对应的 Iny App 记录。当前签名材料上传被自动审批拒绝，尚未执行，需先获得明确授权。
+[Iny TestFlight](.github/workflows/testflight.yml) 为手动触发的独立发布流程。Apple 后台已建立 Iny App（`6836777599`）和独立的“Iny 内测”组。当前描述文件和签名 Secrets 尚未配置：签名材料上传被自动审批拒绝，尚未执行，需先获得对凭证种类和 GitHub 目的地的明确授权。
 
 [Codemagic 配置](codemagic.yaml) 是另一条独立流程入口，签名集成名称为 `iny`；未创建或修改其他项目的工作流。
 
