@@ -1,7 +1,7 @@
 import Foundation
 
 enum SourceKind: String, Codable, CaseIterable, Identifiable, Sendable {
-    case webdav, jellyfin, emby, plex, smb, ftp, sftp, nfs
+    case webdav, jellyfin, emby, plex, smb, ftp, sftp, nfs, dropbox, googleDrive, oneDrive, aliyun
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -13,8 +13,16 @@ enum SourceKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .ftp: return "FTP"
         case .sftp: return "SFTP"
         case .nfs: return "NFS"
+        case .dropbox: return "Dropbox"
+        case .googleDrive: return "Google Drive"
+        case .oneDrive: return "OneDrive"
+        case .aliyun: return "阿里云盘"
         }
     }
+}
+
+extension SourceKind {
+    var isCloud: Bool { [.dropbox, .googleDrive, .oneDrive, .aliyun].contains(self) }
 }
 
 struct MediaSource: Identifiable, Codable, Hashable, Sendable {
@@ -94,6 +102,7 @@ struct PlaybackResource: Sendable {
     var url: URL
     var username: String?
     var password: String?
+    var bearerToken: String?
 }
 
 enum AppError: LocalizedError {

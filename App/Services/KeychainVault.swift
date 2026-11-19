@@ -4,6 +4,10 @@ import Security
 struct SourceSecret: Codable, Sendable {
     var password = ""
     var token = ""
+    var refreshToken: String?
+    var clientID: String?
+    var clientSecret: String?
+    var expiresAt: Date?
 }
 
 enum KeychainVault {
