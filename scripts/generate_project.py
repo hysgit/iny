@@ -47,8 +47,17 @@ def generate():
     package = add("smbPackage", 'isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/amosavian/AMSMB2.git"; requirement = { kind = exactVersion; version = 3.4.0; };')
     dependency = add("smbProduct", f"isa = XCSwiftPackageProductDependency; package = {package}; productName = AMSMB2;")
     framework = add("smbBuild", f"isa = PBXBuildFile; productRef = {dependency};")
+    package_ids = [package]; dependency_ids = [dependency]; framework_ids = [framework]
+    for name, url, requirement in [
+        ("NFSKit", "https://github.com/alexiscn/NFSKit.git", "kind = revision; revision = ec63d055b9ee08d609d3c6cb32f42c07edc7bdf7;"),
+        ("Citadel", "https://github.com/orlandos-nl/Citadel.git", "kind = exactVersion; version = 0.12.1;"),
+    ]:
+        pkg = add(name + "Package", f"isa = XCRemoteSwiftPackageReference; repositoryURL = {quoted(url)}; requirement = {{ {requirement} }};")
+        product_dep = add(name + "Product", f"isa = XCSwiftPackageProductDependency; package = {pkg}; productName = {name};")
+        framework_ids.append(add(name + "Build", f"isa = PBXBuildFile; productRef = {product_dep};"))
+        package_ids.append(pkg); dependency_ids.append(product_dep)
     source_phase = add("sources", f"isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = ({','.join(sources)},); runOnlyForDeploymentPostprocessing = 0;")
-    frameworks = add("frameworks", f"isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = ({framework},); runOnlyForDeploymentPostprocessing = 0;")
+    frameworks = add("frameworks", f"isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = ({','.join(framework_ids)},); runOnlyForDeploymentPostprocessing = 0;")
     resources = add("resources", f"isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = ({','.join(resource_builds)},); runOnlyForDeploymentPostprocessing = 0;")
 
     def configurations(prefix, settings):
@@ -77,7 +86,7 @@ def generate():
         "SWIFT_EMIT_LOC_STRINGS": "YES",
         "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
     })
-    target = add("target", f"isa = PBXNativeTarget; buildConfigurationList = {target_config}; buildPhases = ({source_phase},{frameworks},{resources},); buildRules = (); dependencies = (); name = Iny; packageProductDependencies = ({dependency},); productName = Iny; productReference = {product}; productType = \"com.apple.product-type.application\";")
+    target = add("target", f"isa = PBXNativeTarget; buildConfigurationList = {target_config}; buildPhases = ({source_phase},{frameworks},{resources},); buildRules = (); dependencies = (); name = Iny; packageProductDependencies = ({','.join(dependency_ids)},); productName = Iny; productReference = {product}; productType = \"com.apple.product-type.application\";")
     ui_config = configurations("uiConfig", {
         "PRODUCT_BUNDLE_IDENTIFIER": "net.icycloud.iny.uitests", "PRODUCT_NAME": "$(TARGET_NAME)",
         "GENERATE_INFOPLIST_FILE": "YES", "TARGETED_DEVICE_FAMILY": "1,2", "TEST_TARGET_NAME": "Iny",
@@ -88,7 +97,7 @@ def generate():
     ui_proxy = add("uiProxy", f"isa = PBXContainerItemProxy; containerPortal = {ident('project')}; proxyType = 1; remoteGlobalIDString = {target}; remoteInfo = Iny;")
     ui_dependency = add("uiDependency", f"isa = PBXTargetDependency; target = {target}; targetProxy = {ui_proxy};")
     ui_target = add("uiTarget", f"isa = PBXNativeTarget; buildConfigurationList = {ui_config}; buildPhases = ({ui_sources},{ui_frameworks},); buildRules = (); dependencies = ({ui_dependency},); name = InyUITests; productName = InyUITests; productReference = {ui_product}; productType = \"com.apple.product-type.bundle.ui-testing\";")
-    project = add("project", f"isa = PBXProject; attributes = {{ BuildIndependentTargetsInParallel = YES; LastSwiftUpdateCheck = 1600; LastUpgradeCheck = 1600; TargetAttributes = {{ {ui_target} = {{ TestTargetID = {target}; }}; }}; }}; buildConfigurationList = {project_config}; compatibilityVersion = \"Xcode 14.0\"; developmentRegion = zh_CN; hasScannedForEncodings = 0; knownRegions = (en, zh_CN, Base,); mainGroup = {group}; packageReferences = ({package},); productRefGroup = {products}; projectDirPath = \"\"; projectRoot = \"\"; targets = ({target},{ui_target},);")
+    project = add("project", f"isa = PBXProject; attributes = {{ BuildIndependentTargetsInParallel = YES; LastSwiftUpdateCheck = 1600; LastUpgradeCheck = 1600; TargetAttributes = {{ {ui_target} = {{ TestTargetID = {target}; }}; }}; }}; buildConfigurationList = {project_config}; compatibilityVersion = \"Xcode 14.0\"; developmentRegion = zh_CN; hasScannedForEncodings = 0; knownRegions = (en, zh_CN, Base,); mainGroup = {group}; packageReferences = ({','.join(package_ids)},); productRefGroup = {products}; projectDirPath = \"\"; projectRoot = \"\"; targets = ({target},{ui_target},);")
     project_dir = ROOT / "Iny.xcodeproj"
     project_dir.mkdir(exist_ok=True)
     text = "// !$*UTF8*$!\n{\n\tarchiveVersion = 1;\n\tclasses = {};\n\tobjectVersion = 56;\n\tobjects = {\n" + "\n".join(objects) + f"\n\t}};\n\trootObject = {project};\n}}\n"

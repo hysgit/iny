@@ -1,7 +1,7 @@
 import Foundation
 
 enum SourceKind: String, Codable, CaseIterable, Identifiable, Sendable {
-    case webdav, jellyfin, emby, plex, smb
+    case webdav, jellyfin, emby, plex, smb, ftp, sftp, nfs
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -10,6 +10,9 @@ enum SourceKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .emby: return "Emby"
         case .plex: return "Plex"
         case .smb: return "SMB"
+        case .ftp: return "FTP"
+        case .sftp: return "SFTP"
+        case .nfs: return "NFS"
         }
     }
 }
@@ -22,6 +25,7 @@ struct MediaSource: Identifiable, Codable, Hashable, Sendable {
     var username = ""
     var userID: String?
     var share = ""
+    var hostKey: String?
 }
 
 struct MediaItem: Identifiable, Codable, Hashable, Sendable {

@@ -117,6 +117,7 @@ struct SourceForm: View {
     @State private var username = ""
     @State private var password = ""
     @State private var share = ""
+    @State private var hostKey = ""
     @State private var saving = false
     @State private var error: String?
     var body: some View {
@@ -125,7 +126,8 @@ struct SourceForm: View {
                 Picker("类型", selection: $kind) { ForEach(SourceKind.allCases) { Text($0.title).tag($0) } }
                 TextField("名称", text: $name)
                 TextField(kind == .smb ? "smb://192.168.1.10" : "https://nas.example.com:8096", text: $address).keyboardType(.URL)
-                if kind == .smb { TextField("共享名称，例如 Movies", text: $share) }
+                if kind == .smb || kind == .nfs { TextField(kind == .nfs ? "导出路径，例如 /volume1/video" : "共享名称，例如 Movies", text: $share) }
+                if kind == .sftp { TextField("OpenSSH 主机公钥", text: $hostKey) }
                 if kind != .plex { TextField("用户名", text: $username) }
                 SecureField(kind == .plex ? "Plex 访问令牌" : "密码", text: $password)
                 if kind == .plex { Text("填写自己的 Plex Media Server 地址与访问令牌。当前使用服务器直连。").font(.footnote).foregroundStyle(.secondary) }
@@ -142,9 +144,10 @@ struct SourceForm: View {
         saving = true; error = nil
         defer { saving = false }
         do {
-            let url = try URLTools.server(address, smb: kind == .smb)
+            let scheme = [.ftp, .sftp, .nfs].contains(kind) ? kind.rawValue : nil
+            let url = try URLTools.server(address, smb: kind == .smb, scheme: scheme)
             if kind == .smb, share.contains("/") || share.isEmpty { throw AppError.message("共享名称不能为空，且不能包含斜线。") }
-            let source = MediaSource(name: name.isEmpty ? kind.title : name, kind: kind, endpoint: url, username: username, share: share)
+            let source = MediaSource(name: name.isEmpty ? kind.title : name, kind: kind, endpoint: url, username: username, share: share, hostKey: hostKey.isEmpty ? nil : hostKey)
             try await store.addSource(source, secret: SourceSecret(password: kind == .plex ? "" : password, token: kind == .plex ? password : ""))
             dismiss()
         } catch { self.error = error.localizedDescription }

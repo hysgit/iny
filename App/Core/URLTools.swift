@@ -1,10 +1,10 @@
 import Foundation
 
 enum URLTools {
-    static func server(_ text: String, smb: Bool = false) throws -> URL {
+    static func server(_ text: String, smb: Bool = false, scheme: String? = nil) throws -> URL {
         guard let parts = URLComponents(string: text.trimmingCharacters(in: .whitespacesAndNewlines)),
               let url = parts.url, parts.host?.isEmpty == false,
-              (smb ? ["smb"] : ["http", "https"]).contains(parts.scheme?.lowercased() ?? ""),
+              (scheme.map { [$0] } ?? (smb ? ["smb"] : ["http", "https"])).contains(parts.scheme?.lowercased() ?? ""),
               parts.user == nil, parts.password == nil, parts.query == nil, parts.fragment == nil else { throw AppError.invalidURL }
         return url
     }

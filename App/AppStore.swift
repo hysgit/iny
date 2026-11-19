@@ -61,7 +61,8 @@ final class AppStore: ObservableObject {
         if [.jellyfin, .emby, .plex].contains(source.kind) {
             (source, secret) = try await MediaServerClient(source: source, secret: secret).authenticate()
         } else if source.kind == .webdav { _ = try await WebDAVClient(source: source, secret: secret).list(path: nil) }
-        else { _ = try await SMBClient(source: source, secret: secret).list(path: nil) }
+        else if source.kind == .smb { _ = try await SMBClient(source: source, secret: secret).list(path: nil) }
+        else { _ = try await entriesFor(source, secret: secret, parent: nil) }
         try KeychainVault.save(secret, account: source.id.uuidString)
         do { _ = try await repository.addSource(source) }
         catch { try? KeychainVault.delete(account: source.id.uuidString); throw error }
@@ -77,10 +78,21 @@ final class AppStore: ObservableObject {
 
     func entries(_ source: MediaSource, parent: String?) async throws -> [RemoteEntry] {
         let secret = try secret(for: source)
+        return try await entriesFor(source, secret: secret, parent: parent)
+    }
+    private func entriesFor(_ source: MediaSource, secret: SourceSecret, parent: String?) async throws -> [RemoteEntry] {
         switch source.kind {
         case .webdav: return try await WebDAVClient(source: source, secret: secret).list(path: parent)
         case .smb: return try await SMBClient(source: source, secret: secret).list(path: parent)
         case .jellyfin, .emby, .plex: return try await MediaServerClient(source: source, secret: secret).list(parent: parent)
+        case .ftp: return try await FTPClient(source: source, secret: secret).list(path: parent)
+        case .nfs: return try await NFSClientAdapter(source: source).list(path: parent)
+        case .sftp:
+            #if canImport(Citadel)
+            return try await SFTPClientAdapter(source: source, secret: secret).list(path: parent)
+            #else
+            throw AppError.message("此版本没有 SFTP 客户端。")
+            #endif
         }
     }
 
@@ -104,6 +116,20 @@ final class AppStore: ObservableObject {
             _ = try WebDAVClient(source: source, secret: secret).authorized(url)
             return PlaybackResource(url: url, username: source.username, password: secret.password)
         case .smb: return try SMBClient(source: source, secret: secret).playback(path: item.remotePath ?? id)
+        case .ftp:
+            guard var parts = URLComponents(url: source.endpoint, resolvingAgainstBaseURL: false) else { throw AppError.invalidURL }
+            parts.path = item.remotePath ?? id; parts.user = source.username; parts.password = secret.password
+            return PlaybackResource(url: parts.url!)
+        case .nfs:
+            var url = source.endpoint.appendingPathComponent(source.share)
+            for part in (item.remotePath ?? id).split(separator: "/") { url.appendPathComponent(String(part)) }
+            return PlaybackResource(url: url)
+        case .sftp:
+            #if canImport(Citadel)
+            return try await SFTPClientAdapter(source: source, secret: secret).playback(path: item.remotePath ?? id)
+            #else
+            throw AppError.message("此版本没有 SFTP 客户端。")
+            #endif
         default: return try await MediaServerClient(source: source, secret: secret).playback(id: id)
         }
     }
