@@ -16,6 +16,30 @@ struct MetadataResult: Identifiable, Decodable, Hashable {
 
 struct MetadataClient {
     let token: String
+    func details(id: Int, type: String) async throws -> NFOMetadata {
+        let path = type == "tv" ? "tv/\(id)" : "movie/\(id)"
+        var request = URLRequest(url: try URLTools.endpoint(URL(string: "https://api.themoviedb.org/3")!, path, query: ["language": "zh-CN", "append_to_response": "credits,release_dates,content_ratings"]))
+        request.setValue("Bearer " + token, forHTTPHeaderField: "Authorization")
+        let json = try await HTTPClient.json(request)
+        var result = NFOMetadata(title: (json["title"] ?? json["name"]) as? String, plot: json["overview"] as? String)
+        result.tmdbID = id; result.rating = json["vote_average"] as? Double
+        result.collection = (json["belongs_to_collection"] as? [String: Any])?["name"] as? String
+        result.year = ((json["release_date"] ?? json["first_air_date"]) as? String).flatMap { Int($0.prefix(4)) }
+        if type == "tv" { result.showTitle = result.title }
+        let people = ((json["credits"] as? [String: Any])?["cast"] as? [[String: Any]]) ?? []
+        result.cast = people.prefix(30).compactMap { person in
+            guard let name = person["name"] as? String else { return nil }
+            let portrait = (person["profile_path"] as? String).flatMap { URL(string: "https://image.tmdb.org/t/p/w185" + $0) }
+            return MediaPerson(name: name, role: person["character"] as? String, portrait: portrait)
+        }
+        if type == "tv", let rows = (json["content_ratings"] as? [String: Any])?["results"] as? [[String: Any]] {
+            result.certification = rows.first { $0["iso_3166_1"] as? String == "US" }?["rating"] as? String
+        } else if let rows = (json["release_dates"] as? [String: Any])?["results"] as? [[String: Any]],
+                  let us = rows.first(where: { $0["iso_3166_1"] as? String == "US" }), let dates = us["release_dates"] as? [[String: Any]] {
+            result.certification = dates.compactMap { $0["certification"] as? String }.first { !$0.isEmpty }
+        }
+        return result
+    }
     func search(_ query: String) async throws -> [MetadataResult] {
         let url = try URLTools.endpoint(URL(string: "https://api.themoviedb.org/3")!, "search/multi", query: ["query": query, "language": "zh-CN", "include_adult": "false"])
         var request = URLRequest(url: url)

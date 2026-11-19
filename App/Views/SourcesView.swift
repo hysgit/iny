@@ -1,14 +1,17 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SourcesView: View {
     @EnvironmentObject private var store: AppStore
     @State private var adding = false
     @State private var importing = false
+    @State private var folderImport = false
     @State private var deleting: MediaSource?
     var body: some View {
         List {
             Section {
                 Button("导入视频", systemImage: "iphone.and.arrow.forward") { importing = true }
+                Button("导入整个文件夹", systemImage: "folder.badge.plus") { folderImport = true }
                 NavigationLink { LocalFilesView() } label: { Label("本地视频", systemImage: "internaldrive") }
             }
             Section("网络共享与媒体服务器") {
@@ -31,6 +34,9 @@ struct SourcesView: View {
         }.navigationTitle("文件")
         .sheet(isPresented: $adding) { PrivacyGate { SourceForm() } }
         .videoImporter(isPresented: $importing)
+        .fileImporter(isPresented: $folderImport, allowedContentTypes: [.folder]) { result in
+            Task { await store.perform { try await store.importFolder(result.get()) } }
+        }
         .confirmationDialog("删除此来源及其媒体库记录？本地导入的视频会保留。", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible) {
             Button("删除来源", role: .destructive) { if let source = deleting { Task { await store.perform { try await store.removeSource(source) } } }; deleting = nil }
         }
@@ -78,6 +84,7 @@ struct SourceBrowser: View {
         }.navigationTitle(title).searchable(text: $query, prompt: "搜索此文件夹")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
+                Button("扫描全部子文件夹") { Task { await store.perform { try await store.scan(source, root: parent) } } }.disabled(store.activity != nil)
                 Button(importing ? "已加入 \(added)" : "加入当前文件夹") {
                     Task {
                         importing = true; added = 0

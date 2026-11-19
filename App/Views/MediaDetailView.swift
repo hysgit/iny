@@ -28,6 +28,14 @@ struct MediaDetailView: View {
                         }
                         if item.progress > 0 { ProgressView(value: item.progress).tint(.orange) }
                         if !item.overview.isEmpty { Text(item.overview).font(.body).foregroundStyle(.secondary).textSelection(.enabled) }
+                        if let rating = item.rating { Label(String(format: "%.1f / 10", rating), systemImage: "star.fill").foregroundStyle(.orange) }
+                        if let certification = item.certification { Text(certification).font(.caption).foregroundStyle(.secondary) }
+                        if let people = item.cast, !people.isEmpty {
+                            Text("演职员").font(.headline)
+                            ScrollView(.horizontal) { HStack(alignment: .top, spacing: 18) { ForEach(people) { person in
+                                VStack { AsyncImage(url: person.portrait) { image in image.resizable().scaledToFill() } placeholder: { Image(systemName: "person.crop.circle") }.frame(width: 75, height: 100).clipped(); Text(person.name).lineLimit(2); Text(person.role ?? "").foregroundStyle(.secondary).lineLimit(2) }.font(.caption).frame(width: 90)
+                            } } }
+                        }
                         HStack(spacing: 16) {
                             Button { Task { await store.perform { try await store.update(item.id) { $0.favorite.toggle() } } } } label: { Label(item.favorite ? "已收藏" : "收藏", systemImage: item.favorite ? "heart.fill" : "heart") }
                             Button { Task { await store.perform { try await store.update(item.id) { $0.watched.toggle() } } } } label: { Label(item.watched ? "已观看" : "未观看", systemImage: item.watched ? "checkmark.circle.fill" : "circle") }
@@ -80,10 +88,7 @@ struct MetadataSearchView: View {
                     Button {
                         Task {
                             do {
-                                try await store.update(item.id) {
-                                    $0.title = result.displayTitle; $0.overview = result.overview ?? ""; $0.posterURL = result.poster
-                                    $0.year = result.year; $0.tmdbID = result.id; $0.mediaType = result.media_type ?? "movie"
-                                }; dismiss()
+                                try await store.applyMetadata(result, to: item); dismiss()
                             } catch { self.error = error.localizedDescription }
                         }
                     } label: {

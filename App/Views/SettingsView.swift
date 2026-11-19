@@ -7,6 +7,7 @@ struct SettingsView: View {
     @AppStorage("continuousPlayback") private var continuous = true
     @AppStorage("playbackSpeed") private var speed = 1.0
     @AppStorage("privacyLock") private var privacyLock = false
+    @AppStorage("automaticMetadata") private var automaticMetadata = false
     @State private var exporting = false
     @State private var document = LibraryExport(data: Data())
     var body: some View {
@@ -20,6 +21,7 @@ struct SettingsView: View {
             Section("服务") { NavigationLink("在线服务") { ServiceSettingsView() } }
             Section("隐私") { Toggle("使用设备密码或 Face ID 解锁", isOn: $privacyLock) }
             Section("媒体库") {
+                Toggle("自动匹配在线元数据", isOn: $automaticMetadata)
                 LabeledContent("影片数量", value: String(store.library.items.count))
                 LabeledContent("来源数量", value: String(store.library.sources.count))
                 Button("导出媒体库索引") {

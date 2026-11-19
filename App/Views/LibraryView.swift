@@ -96,6 +96,12 @@ struct LibraryView: View {
         .background(Color(red: 0.045, green: 0.055, blue: 0.08))
         .navigationTitle("媒体库").searchable(text: $query, prompt: "搜索影片和剧集")
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu("分类", systemImage: "square.grid.2x2") {
+                    NavigationLink("剧集") { LibraryGroupsView(series: true) }
+                    NavigationLink("电影系列") { LibraryGroupsView(series: false) }
+                }
+            }
             ToolbarItem(placement: .topBarLeading) {
                 Menu { Picker("排序", selection: $sort) { ForEach(["添加时间", "片名", "最近播放"], id: \.self) { Text($0) } } } label: { Image(systemName: "arrow.up.arrow.down") }
             }
