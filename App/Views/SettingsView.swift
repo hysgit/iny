@@ -15,6 +15,7 @@ struct SettingsView: View {
             Section("播放") {
                 Toggle("优先使用 VLC", isOn: $preferVLC)
                 Toggle("连续播放", isOn: $continuous)
+                NavigationLink("字幕样式与字体") { SubtitleStyleView() }
                 Picker("默认速度", selection: $speed) { ForEach([0.5, 0.75, 1, 1.25, 1.5, 2], id: \.self) { Text(String(format: "%.2g×", $0)).tag($0) } }
                 Text("VLC 用于 MKV、外部字幕和认证共享；系统播放器提供原生画中画及 AirPlay。编码支持以设备实测为准。").font(.footnote).foregroundStyle(.secondary)
             }

@@ -1,6 +1,7 @@
 import Foundation
 import AVKit
 import Combine
+import MediaPlayer
 #if canImport(MobileVLCKit)
 import MobileVLCKit
 #endif
@@ -29,6 +30,10 @@ final class PlayerModel: ObservableObject {
     private var timer: Timer?
     private var status: NSKeyValueObservation?
     private var endObserver: NSObjectProtocol?
+    var title = ""
+    private var remoteTargets: [(MPRemoteCommand, Any)] = []
+    private var interruptionObserver: NSObjectProtocol?
+    @Published var audioDelay: Double = 0
     #if canImport(MobileVLCKit)
     let vlc = VLCMediaPlayer()
     #endif
@@ -51,6 +56,13 @@ final class PlayerModel: ObservableObject {
                 media.addOption(":\(prefix)-pwd=\(resource.password ?? "")")
             }
             if let subtitle { media.addOption(":sub-file=\(subtitle.path)") }
+            let settings = UserDefaults.standard
+            media.addOption(":freetype-font=\(settings.string(forKey: "subtitleFont") ?? "Helvetica Neue")")
+            media.addOption(":freetype-rel-fontsize=\(settings.integer(forKey: "subtitleSize") == 0 ? 5 : settings.integer(forKey: "subtitleSize"))")
+            media.addOption(":freetype-opacity=\(settings.object(forKey: "subtitleOpacity") as? Int ?? 255)")
+            media.addOption(":freetype-background-opacity=\(settings.integer(forKey: "subtitleBackground"))")
+            media.addOption(":freetype-outline-thickness=\(settings.object(forKey: "subtitleOutline") as? Int ?? 2)")
+            media.addOption(":freetype-color=\(settings.object(forKey: "subtitleColor") as? Int ?? 16777215)")
             vlc.media = media; vlc.play(); vlc.rate = rate
         } else { openNative(resource.url, resume: resume) }
         #else
@@ -61,6 +73,7 @@ final class PlayerModel: ObservableObject {
         if subtitle != nil { throw AppError.message("外部字幕需要 VLC。请切换到完整 VLC 构建。") }
         openNative(resource.url, resume: resume)
         #endif
+        installRemoteCommands()
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }
@@ -82,6 +95,7 @@ final class PlayerModel: ObservableObject {
     }
 
     private func tick() {
+        defer { updateNowPlaying() }
         #if canImport(MobileVLCKit)
         if usesVLC {
             position = max(0, Double(vlc.time.intValue) / 1000)
@@ -161,7 +175,62 @@ final class PlayerModel: ObservableObject {
         #endif
     }
 
+    func pause() {
+        #if canImport(MobileVLCKit)
+        if usesVLC { vlc.pause(); return }
+        #endif
+        native.pause()
+    }
+
+    func setAudioDelay(_ seconds: Double) {
+        audioDelay = seconds
+        #if canImport(MobileVLCKit)
+        vlc.currentAudioPlaybackDelay = Int(seconds * 1_000_000)
+        #endif
+    }
+
+    func setAspect(_ ratio: String) {
+        #if canImport(MobileVLCKit)
+        if ratio == "自动" { vlc.videoAspectRatio = nil }
+        else { ratio.withCString { vlc.videoAspectRatio = UnsafeMutablePointer(mutating: $0) } }
+        #endif
+    }
+
+    private func installRemoteCommands() {
+        let center = MPRemoteCommandCenter.shared()
+        func command(_ command: MPRemoteCommand, _ action: @escaping @MainActor () -> Void) {
+            let token = command.addTarget { _ in Task { @MainActor in action() }; return .success }
+            remoteTargets.append((command, token))
+        }
+        command(center.playCommand) { [weak self] in if self?.playing == false { self?.toggle() } }
+        command(center.pauseCommand) { [weak self] in self?.pause() }
+        command(center.togglePlayPauseCommand) { [weak self] in self?.toggle() }
+        center.skipForwardCommand.preferredIntervals = [15]; center.skipBackwardCommand.preferredIntervals = [15]
+        command(center.skipForwardCommand) { [weak self] in if let self { self.seek(self.position + 15) } }
+        command(center.skipBackwardCommand) { [weak self] in if let self { self.seek(self.position - 15) } }
+        let token = center.changePlaybackPositionCommand.addTarget { [weak self] event in
+            guard let event = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
+            let value = event.positionTime; Task { @MainActor in self?.seek(value) }; return .success
+        }
+        remoteTargets.append((center.changePlaybackPositionCommand, token))
+        interruptionObserver = NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] notification in
+            if notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt == AVAudioSession.InterruptionType.began.rawValue {
+                Task { @MainActor in self?.pause() }
+            }
+        }
+        updateNowPlaying()
+    }
+
+    private func updateNowPlaying() {
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = [MPMediaItemPropertyTitle: title,
+            MPMediaItemPropertyPlaybackDuration: duration, MPNowPlayingInfoPropertyElapsedPlaybackTime: position,
+            MPNowPlayingInfoPropertyPlaybackRate: playing ? rate : 0]
+    }
+
     func stop() {
+        for (command, token) in remoteTargets { command.removeTarget(token) }; remoteTargets = []
+        if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) }; interruptionObserver = nil
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         timer?.invalidate(); timer = nil
         status = nil
         if let endObserver { NotificationCenter.default.removeObserver(endObserver) }; endObserver = nil

@@ -103,6 +103,11 @@ struct PlayerScreen: View {
                             Button("上一章节") { model.chapter(next: false) }
                             Button("下一章节") { model.chapter(next: true) }
                         }
+                        Section("画面与声音") {
+                            Picker("画面比例", selection: Binding(get: { "自动" }, set: { model.setAspect($0) })) { ForEach(["自动", "16:9", "4:3", "21:9"], id: \.self) { Text($0) } }
+                            Stepper("音频延迟 \(model.audioDelay, specifier: "%.1f") 秒", value: Binding(get: { model.audioDelay }, set: { model.setAudioDelay($0) }), in: -10...10, step: 0.1)
+                            NavigationLink("字幕样式") { SubtitleStyleView() }
+                        }
                     } else { Text("系统播放器的字幕、音轨、画中画和 AirPlay 可在播放控制栏中选择。") }
                 }.navigationTitle("播放设置").toolbar { Button("完成") { settings = false } }
             }.presentationDetents([.medium, .large]) }
@@ -112,6 +117,7 @@ struct PlayerScreen: View {
     private func open() async {
         do {
             let resource = try await store.resource(item)
+            model.title = item.title
             let subtitle: URL?
             if let filename = item.subtitleFilename { subtitle = try await store.repository.localURL(filename) } else { subtitle = nil }
             try model.open(resource, resume: item.watched ? 0 : item.position, subtitle: subtitle, preferVLC: preferVLC, speed: speed)

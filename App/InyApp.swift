@@ -6,7 +6,7 @@ struct InyApp: App {
     var body: some Scene {
         WindowGroup {
             PrivacyGate { RootView() }.environmentObject(store).preferredColorScheme(.dark).tint(.orange)
-                .task { await store.load() }
+                .task { do { try FontLibrary.registerAll() } catch { store.error = error.localizedDescription }; await store.load() }
                 .onOpenURL { url in
                     if url.isFileURL { Task { await store.importFiles([url]) } }
                     else if url.scheme == "iny", let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
