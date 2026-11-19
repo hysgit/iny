@@ -7,7 +7,7 @@ struct SourceSecret: Codable, Sendable {
 }
 
 enum KeychainVault {
-    private static let service = "local.infuse.rebuild"
+    private static let service = "net.icycloud.iny"
 
     static func save<T: Encodable>(_ value: T, account: String) throws {
         let data = try JSONEncoder().encode(value)

@@ -29,7 +29,7 @@ struct SettingsView: View {
                 Text("索引不包含视频文件和登录凭证。").font(.footnote).foregroundStyle(.secondary)
             }
             Section("关于") {
-                LabeledContent("Infuse Rebuild", value: "0.1.0")
+                LabeledContent("Iny", value: "0.1.0")
                 Text("根据 IPA 中可读取的配置和资源重新编写。功能覆盖与原版差异详见工程内的功能对照表。").font(.footnote).foregroundStyle(.secondary)
                 Link("VLC 开源许可", destination: URL(string: "https://www.videolan.org/vlc/libvlc.html")!)
                 Link("TMDB", destination: URL(string: "https://www.themoviedb.org")!)

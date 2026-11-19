@@ -1,7 +1,7 @@
 platform :ios, '17.0'
 use_frameworks!
-project 'InfuseRebuild.xcodeproj'
+project 'Iny.xcodeproj'
 
-target 'InfuseRebuild' do
+target 'Iny' do
   pod 'MobileVLCKit', '3.7.5'
 end

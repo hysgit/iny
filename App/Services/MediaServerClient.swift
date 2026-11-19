@@ -10,10 +10,10 @@ struct MediaServerClient {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if source.kind == .plex {
             request.setValue(secret.token, forHTTPHeaderField: "X-Plex-Token")
-            request.setValue("Infuse Rebuild", forHTTPHeaderField: "X-Plex-Product")
-            request.setValue("local-infuse-rebuild", forHTTPHeaderField: "X-Plex-Client-Identifier")
+            request.setValue("Iny", forHTTPHeaderField: "X-Plex-Product")
+            request.setValue("local-iny", forHTTPHeaderField: "X-Plex-Client-Identifier")
         } else {
-            request.setValue("MediaBrowser Client=\"Infuse Rebuild\", Device=\"iOS\", DeviceId=\"local-infuse-rebuild\", Version=\"0.1.0\"", forHTTPHeaderField: "Authorization")
+            request.setValue("MediaBrowser Client=\"Iny\", Device=\"iOS\", DeviceId=\"local-iny\", Version=\"0.1.0\"", forHTTPHeaderField: "Authorization")
             if !secret.token.isEmpty { request.setValue(secret.token, forHTTPHeaderField: "X-Emby-Token") }
         }
         if let body {

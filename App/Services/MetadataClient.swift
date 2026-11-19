@@ -40,7 +40,7 @@ struct OpenSubtitlesClient {
     private func request(_ path: String, query: [String: String] = [:]) throws -> URLRequest {
         var request = URLRequest(url: try URLTools.endpoint(Self.base, path, query: query))
         request.setValue(apiKey, forHTTPHeaderField: "Api-Key")
-        request.setValue("InfuseRebuild v0.1.0", forHTTPHeaderField: "User-Agent")
+        request.setValue("Iny v0.1.0", forHTTPHeaderField: "User-Agent")
         if !token.isEmpty { request.setValue("Bearer " + token, forHTTPHeaderField: "Authorization") }
         return request
     }
