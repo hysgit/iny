@@ -5,8 +5,8 @@ actor TraktClient {
     private let base = URL(string: "https://api.trakt.tv")!
     private var refreshing: Task<SourceSecret, Error>?
     private var episodes: [UUID: Int] = [:]
-    private func request(_ path: String, body: [String: Any]? = nil, credential: SourceSecret) throws -> URLRequest {
-        var request = URLRequest(url: try URLTools.endpoint(base, path))
+    private func request(_ path: String, query: [String: String] = [:], body: [String: Any]? = nil, credential: SourceSecret) throws -> URLRequest {
+        var request = URLRequest(url: try URLTools.endpoint(base, path, query: query))
         request.setValue("2", forHTTPHeaderField: "trakt-api-version")
         request.setValue(credential.clientID ?? "", forHTTPHeaderField: "trakt-api-key")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -46,8 +46,8 @@ actor TraktClient {
         }
         refreshing = task; defer { refreshing = nil }; return try await task.value
     }
-    private func rows(_ path: String, credential: SourceSecret) async throws -> [[String: Any]] {
-        let data = try await HTTPClient.send(request(path, credential: credential))
+    private func rows(_ path: String, query: [String: String] = [:], credential: SourceSecret) async throws -> [[String: Any]] {
+        let data = try await HTTPClient.send(request(path, query: query, credential: credential))
         guard let rows = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { throw AppError.invalidResponse }; return rows
     }
     func scrobble(_ item: MediaItem, position: Double, duration: Double, action: String) async throws {
@@ -56,7 +56,7 @@ actor TraktClient {
         if item.mediaType == "tv" {
             guard let season = item.season, let episode = item.episode else { return }
             if episodes[item.id] == nil {
-                let shows = try await rows("search/tmdb/\(id)?type=show", credential: credential)
+                let shows = try await rows("search/tmdb/\(id)", query: ["type": "show"], credential: credential)
                 guard let show = shows.first?["show"] as? [String: Any], let ids = show["ids"] as? [String: Any], let showID = ids["trakt"] as? Int else { return }
                 let result = try await HTTPClient.json(request("shows/\(showID)/seasons/\(season)/episodes/\(episode)", credential: credential))
                 episodes[item.id] = (result["ids"] as? [String: Any])?["trakt"] as? Int
@@ -71,6 +71,7 @@ actor TraktClient {
     }
     func rate(_ item: MediaItem, rating: Int) async throws {
         guard let id = item.tmdbID, item.mediaType == "movie", (1...10).contains(rating) else { throw AppError.message("请先匹配电影元数据。") }
-        _ = try await HTTPClient.send(request("sync/ratings", body: ["movies": [["ids": ["tmdb": id], "rating": rating]]], credential: credential()))
+        let credential = try await credential()
+        _ = try await HTTPClient.send(request("sync/ratings", body: ["movies": [["ids": ["tmdb": id], "rating": rating]]], credential: credential))
     }
 }

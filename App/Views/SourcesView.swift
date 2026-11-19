@@ -6,6 +6,7 @@ struct SourcesView: View {
     @State private var adding = false
     @State private var importing = false
     @State private var folderImport = false
+    @State private var plexAccount = false
     @State private var deleting: MediaSource?
     var body: some View {
         List {
@@ -27,12 +28,14 @@ struct SourcesView: View {
                     }.swipeActions { Button("删除", role: .destructive) { deleting = source } }
                 }
                 Button("添加来源", systemImage: "plus.circle.fill") { adding = true }
+                Button("通过 Plex 账户添加", systemImage: "person.crop.circle.badge.plus") { plexAccount = true }
             }
             Section {
                 Text("也可从 iOS“文件”中的 iCloud Drive、第三方云盘或 SMB 位置选择视频并导入。").font(.footnote).foregroundStyle(.secondary)
             }
         }.navigationTitle("文件")
         .sheet(isPresented: $adding) { PrivacyGate { SourceForm() } }
+        .sheet(isPresented: $plexAccount) { PrivacyGate { PlexAccountView() } }
         .videoImporter(isPresented: $importing)
         .fileImporter(isPresented: $folderImport, allowedContentTypes: [.folder]) { result in
             Task { await store.perform { try await store.importFolder(result.get()) } }
