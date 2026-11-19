@@ -51,6 +51,7 @@ actor LibraryRepository {
         try change { state in
             guard let i = state.items.firstIndex(where: { $0.id == id }) else { return }
             body(&state.items[i])
+            state.items[i].modifiedAt = Date()
         }
     }
 
@@ -62,7 +63,7 @@ actor LibraryRepository {
         // 先提交索引再清理文件；清理失败最多留下孤立文件，不造成索引指向已删文件。
         let old = try load().items.first { $0.id == id }
         let next = try change { $0.items.removeAll { $0.id == id } }
-        for filename in [old?.localFilename, old?.subtitleFilename].compactMap({ $0 }) {
+        for filename in [old?.localFilename, old?.subtitleFilename, old?.posterFilename].compactMap({ $0 }) {
             if let url = try? localURL(filename) { try? FileManager.default.removeItem(at: url) }
         }
         return next
@@ -81,17 +82,56 @@ actor LibraryRepository {
         return directory.appendingPathComponent(filename)
     }
 
-    func importFile(_ source: URL, title: String? = nil) throws -> LibrarySnapshot {
+    func importFile(_ source: URL, title: String? = nil) async throws -> LibrarySnapshot {
         guard MediaFormats.isVideo(source.lastPathComponent) else { throw AppError.message("不支持此视频文件扩展名。") }
         _ = try load()
         let filename = UUID().uuidString + "." + source.pathExtension.lowercased()
         let target = try localURL(filename)
-        try FileManager.default.copyItem(at: source, to: target)
         do {
-            return try add(MediaItem(title: title ?? MediaFormats.title(source.lastPathComponent), localFilename: filename))
+            try await Task.detached(priority: .utility) { try FileManager.default.copyItem(at: source, to: target) }.value
+            let parsed = FilenameMetadata.parse(source.lastPathComponent)
+            var item = MediaItem(title: title ?? parsed.title, localFilename: filename, year: parsed.year)
+            item.season = parsed.season; item.episode = parsed.episode
+            if parsed.episode != nil { item.mediaType = "tv"; item.seriesTitle = parsed.title }
+            item.modifiedAt = Date()
+            return try add(item)
         } catch {
             try? FileManager.default.removeItem(at: target)
             throw error
+        }
+    }
+
+    func saveProgress(_ id: UUID, position: Double, duration: Double, capturedAt: Date) throws -> LibrarySnapshot {
+        try change { state in
+            guard let index = state.items.firstIndex(where: { $0.id == id }),
+                  state.items[index].lastPlayedAt.map({ $0 <= capturedAt }) ?? true else { return }
+            state.items[index].position = position
+            if duration > 0 { state.items[index].duration = duration }
+            state.items[index].lastPlayedAt = capturedAt; state.items[index].modifiedAt = capturedAt
+            if duration > 0, position / duration >= 0.95 { state.items[index].watched = true }
+        }
+    }
+
+    func attachArtwork(_ source: URL, to id: UUID) throws -> LibrarySnapshot {
+        let name = UUID().uuidString + "." + source.pathExtension
+        let target = try localURL(name)
+        let previous = try load().items.first { $0.id == id }?.posterFilename
+        guard try load().items.contains(where: { $0.id == id }) else { throw AppError.message("影片已移除。") }
+        try FileManager.default.copyItem(at: source, to: target)
+        do {
+            let result = try update(id) { $0.posterFilename = name }
+            if let previous { try? FileManager.default.removeItem(at: localURL(previous)) }
+            return result
+        } catch { try? FileManager.default.removeItem(at: target); throw error }
+    }
+
+    func addRemoteBatch(_ items: [MediaItem], sourceID: UUID) throws -> LibrarySnapshot {
+        try change { state in
+            guard state.sources.contains(where: { $0.id == sourceID }) else { throw AppError.message("来源已移除，扫描已停止。") }
+            var known = Set(state.items.filter { $0.sourceID == sourceID }.compactMap(\.remoteID))
+            for item in items where item.sourceID == sourceID {
+                if let id = item.remoteID, known.insert(id).inserted { state.items.append(item) }
+            }
         }
     }
 

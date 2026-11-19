@@ -110,6 +110,7 @@ final class AppStore: ObservableObject {
 
     func artwork(_ item: MediaItem) async -> Data? {
         do {
+            if let file = item.posterFilename { return try Data(contentsOf: await repository.localURL(file)) }
             if let url = item.posterURL { return try await HTTPClient.send(URLRequest(url: url)) }
             guard let source = library.sources.first(where: { $0.id == item.sourceID }), let id = item.remoteID,
                   [.jellyfin, .emby, .plex].contains(source.kind) else { return nil }
@@ -124,11 +125,9 @@ final class AppStore: ObservableObject {
 
     func progress(_ item: MediaItem, position: Double, duration: Double) async throws {
         guard position.isFinite, duration.isFinite, position >= 0 else { return }
-        try await update(item.id) {
-            $0.position = position; if duration > 0 { $0.duration = duration }
-            $0.lastPlayedAt = Date()
-            if duration > 0, position / duration >= 0.95 { $0.watched = true }
-        }
+        let capturedAt = Date()
+        _ = try await repository.saveProgress(item.id, position: position, duration: duration, capturedAt: capturedAt)
+        try await refresh()
     }
 
     func report(_ item: MediaItem, position: Double, stopped: Bool, paused: Bool = false, started: Bool = false) async {

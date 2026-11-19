@@ -45,8 +45,24 @@ struct MediaItem: Identifiable, Codable, Hashable, Sendable {
     var subtitleFilename: String?
     var tmdbID: Int?
     var mediaType = "movie"
+    var seriesTitle: String?
+    var season: Int?
+    var episode: Int?
+    var collection: String?
+    var rating: Double?
+    var certification: String?
+    var cast: [MediaPerson]?
+    var posterFilename: String?
+    var modifiedAt: Date?
     var progress: Double { duration > 0 ? min(max(position / duration, 0), 1) : 0 }
     var isLocal: Bool { localFilename != nil }
+}
+
+struct MediaPerson: Codable, Hashable, Identifiable, Sendable {
+    var id: String { name + (role ?? "") }
+    var name: String
+    var role: String?
+    var portrait: URL?
 }
 
 struct LibrarySnapshot: Codable, Sendable {
