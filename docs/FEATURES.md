@@ -8,9 +8,9 @@
 |---|---|---|---|
 | 本地视频导入与删除 | 视频类型声明、文件文案 | 已实现复制导入、沙箱存储和删除 | 核心文件事务测试通过；未覆盖所有文件提供程序 |
 | 媒体库与海报墙 | `bcLibrary`、元数据文案 | 已实现海报网格、搜索、排序、收藏、观看标记 | iOS 工程已编译；iPhone/iPad 初始界面真实截图已复核 |
-| 继续观看与进度保存 | `svcResumePlayback`、`vvResumeButton` | 已实现自动保存、断点播放、观看完成标记 | 核心并发测试通过；实际视频恢复待真机 |
+| 继续观看与进度保存 | `svcResumePlayback`、`vvResumeButton` | 已实现自动保存、断点播放、观看完成标记 | 并发测试及 H.264 实际播放后进度落盘通过；跨启动恢复和真机待验 |
 | 播放队列、倍速、章节 | `pmPlaybackQueue`、`pmPlaybackSpeed`、章节文案 | 已实现播放队列、连续播放、倍速和 VLC 章节跳转 | 已编译；未完成实际媒体验收 |
-| 多容器及音视频解码 | 原包 FFmpeg、dav1d 框架 | 使用 MobileVLCKit；可切换 AVPlayer | 不宣称与原包编码、HDR 或音效能力完全相同 |
+| 多容器及音视频解码 | 原包 FFmpeg、dav1d 框架 | 使用 MobileVLCKit；可切换 AVPlayer | 60 秒 H.264 样片实际播放、暂停通过；其他编码和高级输出未全面验收 |
 | 内嵌音轨、内嵌与外部字幕 | `pmSubtitles` 等 | 已实现 VLC 轨道选择、外部字幕、延迟调节 | 已编译；字幕字体、大小、背景和 HDR 亮度设置未实现 |
 | WebDAV | Bonjour 服务与共享文案 | 已实现 Basic 认证、目录浏览、视频串流 | XML、路径、同源和状态解析测试通过；真实 NAS 未联调 |
 | SMB | `StratospherixLibSMB.framework`、SMB 文案 | 已实现 AMSMB2 浏览与 VLC SMB 播放入口 | 未完成真实 SMB 2/3 服务联调 |

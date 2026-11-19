@@ -24,6 +24,7 @@
 | E-007 | 当前 `App/` 与 `Iny.xcodeproj/` | 新 SwiftUI 界面、VLC/AVPlayer、媒体库事务及网络来源实现 | `python scripts/check_sources.py --swift-parser`；Xcode 与 Swift 测试结果分别记录，不混同语法检查 |
 | E-008 | [云构建 44525758708](https://github.com/hysgit/iny/actions/runs/44525758708) | 提交 `860d9ed` 的 iPhone/iPad 安装、启动与截图成功；本机已逐图复核 | `analysis/cloud/44525758708/artifacts/previews/`，运行 `python scripts/fetch_artifacts.py 44525758708 --previews-only` 取回 |
 | E-009 | 独立 Apple App 与内测组 API/UI | Iny App ID `6836777599`；“Iny 内测”组 `890170cc-8b9c-4fa3-8933-562df45227d0`，内部组 | 本机记录 `analysis/apple-app.json`；不含账号密码、API 私钥或 JWT |
+| E-010 | [云端验收 44542647747](https://github.com/hysgit/iny/actions/runs/44542647747) | 提交 `d4580ea` 原生编译、16 项核心测试及 1 项真实播放 UI 测试通过；60 秒样片退出后保存位置 10.41 秒 | `analysis/cloud/44542647747/` 与构建的 `previews/playback-result.json`；样片为程序生成测试图，不含用户媒体 |
 
 ### Findings
 
@@ -31,7 +32,7 @@
 |---|---|---|---|---|---|---|
 | F-001 | n/a_re | E-001、E-002、E-003 | high | 主程序加载命令 | validated | 主程序仍标记 App Store 加密；不能把字符串/资源提取称为完整源码恢复 |
 | F-002 | n/a_re | E-imports、E-004 | high | 配置、依赖及本地化资源 | validated | 可建立可复查的功能入口清单；文案或框架存在不证明具体运行行为 |
-| F-003 | n/a_re | E-005、E-007 | high | 新核心包与原生工程 | validated | 新实现已经过真实 Swift 测试和一轮 iOS 编译；不代表真实 NAS、所有编码或完整原版行为验收 |
+| F-003 | n/a_re | E-005、E-007、E-008、E-010 | high | 新核心包与原生工程 | validated | 新实现经真实 Swift 测试、iOS 编译、双设备启动及 H.264 播放/暂停/关闭与进度落盘；不代表真实 NAS、所有编码或完整原版行为验收 |
 | F-004 | n/a_re | E-006、E-009 | high | Apple 新应用配置 | validated | Bundle ID、独立 App 记录和内部组均已建立；当前未完成签名及 TestFlight 发布 |
 
 ### P-001
@@ -56,7 +57,7 @@
 - 验证路径穿越、来源删除后迟到请求、跨来源去重和进度/收藏同时修改。
 - 验证 WebDAV 命名空间、相对地址、中文、XML 转义、失败属性及跨源条目。
 - 云测试发现 Linux XMLParser 对截断 XML 的返回行为不足以单独判断完整性；新增错误回调、元素深度和根节点校验后，16 项测试全部通过。
-- iPhone/iPad 安装、启动与截图流程已通过并逐图复核。另加真实 H.264 样片的播放/暂停/保存进度 UI 验收，当前仍在运行，不能把启动成功写成已验证实际解码。
+- iPhone/iPad 安装、启动与截图流程已通过并逐图复核。另加的真实 H.264 样片播放/暂停/关闭 UI 用例及宿主侧进度落盘检查也已通过，实际记录为位置 10.41 秒、时长 60 秒。
 
 ## 未完成与限制
 
