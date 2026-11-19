@@ -31,6 +31,11 @@ final class LocalMediaServer {
         guard let ip = Self.wifiAddress() else { throw AppError.message("请连接 Wi-Fi 后重试。") }
         parts.host = ip; return parts.url!
     }
+    func lanURL(_ url: URL) throws -> URL {
+        guard url.host == "127.0.0.1" else { return url }
+        guard let ip = Self.wifiAddress(), var parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { throw AppError.message("请连接 Wi-Fi。") }
+        parts.host = ip; return parts.url!
+    }
 
     private func start() async throws {
         if listener != nil { return }

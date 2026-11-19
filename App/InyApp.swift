@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct InyApp: App {
+    init() { CastService.configure() }
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var store = AppStore()
     var body: some Scene {

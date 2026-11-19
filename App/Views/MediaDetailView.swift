@@ -41,6 +41,7 @@ struct MediaDetailView: View {
                             Button { Task { await store.perform { try await store.update(item.id) { $0.watched.toggle() } } } } label: { Label(item.watched ? "已观看" : "未观看", systemImage: item.watched ? "checkmark.circle.fill" : "circle") }
                         }.buttonStyle(.bordered)
                         VStack(spacing: 0) {
+                            HStack { CastDeviceButton().frame(width: 44, height: 44); Button("播放到 Google Cast") { Task { await store.perform { try await CastService.play(item, store: store) } } } }.padding()
                             action("匹配海报与简介", icon: "sparkle.magnifyingglass") { metadata = true }
                             action(item.subtitleFilename == nil ? "导入字幕" : "替换外部字幕", icon: "captions.bubble") { subtitleImport = true }
                             action("查找在线字幕", icon: "text.magnifyingglass") { subtitles = true }
