@@ -19,6 +19,9 @@ final class WebDAVParser: NSObject, XMLParserDelegate {
     private var inPropstat = false
     private var element = ""
     private var buffer = ""
+    private var depth = 0
+    private var validRoot = false
+    private var parseFailed = false
 
     static func parse(_ data: Data, relativeTo base: URL) throws -> [RemoteEntry] {
         let delegate = WebDAVParser()
@@ -26,7 +29,8 @@ final class WebDAVParser: NSObject, XMLParserDelegate {
         parser.shouldProcessNamespaces = true
         parser.shouldResolveExternalEntities = false
         parser.delegate = delegate
-        guard parser.parse() else { throw AppError.message("WebDAV 目录 XML 无法解析。") }
+        guard parser.parse(), parser.parserError == nil, !delegate.parseFailed,
+              delegate.depth == 0, delegate.validRoot else { throw AppError.message("WebDAV 目录 XML 无法解析。") }
         return delegate.responses.compactMap { value in
             guard value.successful else { return nil }
             guard let url = URL(string: value.href, relativeTo: base)?.absoluteURL,
@@ -43,6 +47,8 @@ final class WebDAVParser: NSObject, XMLParserDelegate {
     }
 
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes: [String: String]) {
+        depth += 1
+        if depth == 1 { validRoot = name == "multistatus" }
         element = name; buffer = ""
         if name == "response" { response = Response() }
         if name == "propstat" { inPropstat = true; props = [:]; folder = false; status = "" }
@@ -53,6 +59,7 @@ final class WebDAVParser: NSObject, XMLParserDelegate {
     func parser(_ parser: XMLParser, foundCharacters string: String) { buffer += string }
 
     func parser(_ parser: XMLParser, didEndElement name: String, namespaceURI: String?, qualifiedName: String?) {
+        depth -= 1
         if name == "href", !inProperties { response.href = buffer.trimmingCharacters(in: .whitespacesAndNewlines) }
         if name == "displayname", inProperties { props[name] = buffer }
         if name == "status", inPropstat { status = buffer }
@@ -67,4 +74,6 @@ final class WebDAVParser: NSObject, XMLParserDelegate {
         if name == "response", !response.href.isEmpty { responses.append(response) }
         buffer = ""
     }
+
+    func parser(_ parser: XMLParser, parseErrorOccurred parseError: Error) { parseFailed = true }
 }

@@ -49,6 +49,7 @@ final class ProtocolTests: XCTestCase {
 
     func testInvalidXMLFailsRatherThanReturningPartialDirectory() {
         XCTAssertThrowsError(try WebDAVParser.parse(Data("<multistatus><response>".utf8), relativeTo: URL(string: "https://nas.example")!))
+        XCTAssertThrowsError(try WebDAVParser.parse(Data("<html><body>Login required</body></html>".utf8), relativeTo: URL(string: "https://nas.example")!))
     }
 
     func testWebDAVRejectsFailedPropertyStatus() throws {
