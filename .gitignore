@@ -12,3 +12,9 @@ build/
 .build/
 __pycache__/
 .tools/
+analysis/
+.signing/
+*.p8
+*.p12
+*.mobileprovision
+dist/

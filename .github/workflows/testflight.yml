@@ -1,0 +1,93 @@
+name: Iny TestFlight
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: iny-testflight
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run core regression tests
+        run: swift test
+      - name: Install VLC
+        run: pod install --repo-update
+      - name: Install Iny signing identity
+        env:
+          P12_BASE64: ${{ secrets.INY_SIGNING_P12 }}
+          P12_PASSWORD: ${{ secrets.INY_SIGNING_PASSWORD }}
+          PROFILE_BASE64: ${{ secrets.INY_PROVISIONING_PROFILE }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH="$RUNNER_TEMP/iny.keychain-db"
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 24)
+          printf '%s' "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/Iny.p12"
+          printf '%s' "$PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/Iny.mobileprovision"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$RUNNER_TEMP/Iny.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+          security cms -D -i "$RUNNER_TEMP/Iny.mobileprovision" > "$RUNNER_TEMP/profile.plist"
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print UUID' "$RUNNER_TEMP/profile.plist")
+          TEAM_ID=$(/usr/libexec/PlistBuddy -c 'Print TeamIdentifier:0' "$RUNNER_TEMP/profile.plist")
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$RUNNER_TEMP/Iny.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+          printf 'PROFILE_UUID=%s\nTEAM_ID=%s\n' "$PROFILE_UUID" "$TEAM_ID" >> "$GITHUB_ENV"
+      - name: Configure only the Iny app target for signing
+        run: |
+          ruby <<'RUBY'
+          require 'xcodeproj'
+          project = Xcodeproj::Project.open('Iny.xcodeproj')
+          target = project.targets.find { |item| item.name == 'Iny' }
+          target.build_configurations.each do |config|
+            config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
+            config.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution'
+            config.build_settings['DEVELOPMENT_TEAM'] = ENV.fetch('TEAM_ID')
+            config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ENV.fetch('PROFILE_UUID')
+            config.build_settings['CURRENT_PROJECT_VERSION'] = (1000 + ENV.fetch('GITHUB_RUN_NUMBER').to_i).to_s
+          end
+          project.save
+          RUBY
+      - name: Archive and export Iny
+        run: |
+          mkdir -p build
+          set -o pipefail
+          xcodebuild -workspace Iny.xcworkspace -scheme Iny -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Iny.xcarchive" \
+            archive 2>&1 | tee build/archive.log
+          python3 <<'PY'
+          import os, plistlib
+          options = {'method': 'app-store-connect', 'signingStyle': 'manual', 'teamID': os.environ['TEAM_ID'],
+                     'provisioningProfiles': {'net.icycloud.iny': os.environ['PROFILE_UUID']},
+                     'manageAppVersionAndBuildNumber': False, 'uploadSymbols': True}
+          with open('build/ExportOptions.plist', 'wb') as f: plistlib.dump(options, f)
+          PY
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Iny.xcarchive" \
+            -exportPath build/ios/ipa -exportOptionsPlist build/ExportOptions.plist
+      - name: Upload Iny to App Store Connect
+        env:
+          ASC_PRIVATE_KEY: ${{ secrets.INY_ASC_PRIVATE_KEY }}
+          ASC_KEY_ID: ${{ secrets.INY_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.INY_ASC_ISSUER_ID }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/private_keys"
+          printf '%s' "$ASC_PRIVATE_KEY" > "$RUNNER_TEMP/private_keys/AuthKey_$ASC_KEY_ID.p8"
+          export API_PRIVATE_KEYS_DIR="$RUNNER_TEMP/private_keys"
+          xcrun altool --upload-app --type ios -f build/ios/ipa/Iny.ipa \
+            --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Iny-TestFlight-artifacts
+          path: |
+            build/archive.log
+            build/ios/ipa/*.ipa
+      - name: Remove temporary signing keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/iny.keychain-db" || true
