@@ -39,7 +39,7 @@ jobs:
           set -o pipefail
           xcodebuild -workspace Iny.xcworkspace -scheme Iny -configuration Debug \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO \
+            -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES \
             build 2>&1 | tee build/simulator.log
           ditto -c -k --sequesterRsrc --keepParent \
             build/DerivedData/Build/Products/Debug-iphonesimulator/Iny.app build/Iny-simulator.zip
@@ -50,10 +50,10 @@ jobs:
           SIMULATOR_ID=$(python3 -c "import json; print(next(x['udid'] for x in json.load(open('build/previews/launches.json')) if x['family']=='iPhone'))")
           set -o pipefail
           xcodebuild test -workspace Iny.xcworkspace -scheme Iny -configuration Debug \
-            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID,arch=$(uname -m)" \
             -derivedDataPath build/DerivedData -parallel-testing-enabled NO \
             -only-testing:InyUITests -resultBundlePath build/Playback.xcresult \
-            CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/playback.log
+            CODE_SIGNING_ALLOWED=NO ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES 2>&1 | tee build/playback.log
           python3 scripts/verify_playback.py
       - uses: actions/upload-artifact@v4
         if: always()

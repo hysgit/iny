@@ -60,6 +60,7 @@ def generate():
             if name == "Debug":
                 specific["SWIFT_ACTIVE_COMPILATION_CONDITIONS"] = "DEBUG"
                 specific["ENABLE_TESTABILITY"] = "YES"
+                specific["ONLY_ACTIVE_ARCH"] = "YES"
             body = " ".join(f"{k} = {quoted(v)};" for k, v in specific.items())
             configs.append(add(prefix + name, f"isa = XCBuildConfiguration; buildSettings = {{ {body} }}; name = {name};"))
         return add(prefix + "list", f"isa = XCConfigurationList; buildConfigurations = ({','.join(configs)},); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;")
