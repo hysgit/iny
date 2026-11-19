@@ -85,6 +85,7 @@ def generate():
         "LD_RUNPATH_SEARCH_PATHS": "$(inherited) @executable_path/Frameworks", "SUPPORTS_MACCATALYST": "NO",
         "SWIFT_EMIT_LOC_STRINGS": "YES",
         "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+        "CODE_SIGN_ENTITLEMENTS": "App/Iny.entitlements",
     })
     target = add("target", f"isa = PBXNativeTarget; buildConfigurationList = {target_config}; buildPhases = ({source_phase},{frameworks},{resources},); buildRules = (); dependencies = (); name = Iny; packageProductDependencies = ({','.join(dependency_ids)},); productName = Iny; productReference = {product}; productType = \"com.apple.product-type.application\";")
     ui_config = configurations("uiConfig", {

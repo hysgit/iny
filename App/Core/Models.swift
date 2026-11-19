@@ -34,6 +34,7 @@ struct MediaSource: Identifiable, Codable, Hashable, Sendable {
     var userID: String?
     var share = ""
     var hostKey: String?
+    var modifiedAt: Date?
 }
 
 struct MediaItem: Identifiable, Codable, Hashable, Sendable {
@@ -66,6 +67,10 @@ struct MediaItem: Identifiable, Codable, Hashable, Sendable {
     var cast: [MediaPerson]?
     var posterFilename: String?
     var modifiedAt: Date?
+    var contentID: String?
+    var favoriteChangedAt: Date?
+    var watchedChangedAt: Date?
+    var metadataChangedAt: Date?
     var progress: Double { duration > 0 ? min(max(position / duration, 0), 1) : 0 }
     var isLocal: Bool { localFilename != nil }
 }
@@ -82,6 +87,8 @@ struct LibrarySnapshot: Codable, Sendable {
     var revision: Int?
     var items: [MediaItem] = []
     var sources: [MediaSource] = []
+    var deletedItems: [String: Date]?
+    var deletedSources: [String: Date]?
 }
 
 struct RemoteEntry: Identifiable, Hashable, Sendable {

@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct InyApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var store = AppStore()
     var body: some Scene {
         WindowGroup {
@@ -14,6 +15,7 @@ struct InyApp: App {
                         Task { await store.perform { try await store.addStream(stream, title: "") } }
                     }
                 }
+                .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await store.synchronizeCloud() } } }
         }
     }
 }

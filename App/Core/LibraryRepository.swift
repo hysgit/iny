@@ -50,8 +50,12 @@ actor LibraryRepository {
     func update(_ id: UUID, _ body: (inout MediaItem) -> Void) throws -> LibrarySnapshot {
         try change { state in
             guard let i = state.items.firstIndex(where: { $0.id == id }) else { return }
+            let old = state.items[i]
             body(&state.items[i])
-            state.items[i].modifiedAt = Date()
+            let now = Date(); state.items[i].modifiedAt = now
+            if old.favorite != state.items[i].favorite { state.items[i].favoriteChangedAt = now }
+            if old.watched != state.items[i].watched { state.items[i].watchedChangedAt = now }
+            if old.title != state.items[i].title || old.overview != state.items[i].overview || old.tmdbID != state.items[i].tmdbID { state.items[i].metadataChangedAt = now }
         }
     }
 
@@ -62,7 +66,7 @@ actor LibraryRepository {
     func remove(_ id: UUID) throws -> LibrarySnapshot {
         // 先提交索引再清理文件；清理失败最多留下孤立文件，不造成索引指向已删文件。
         let old = try load().items.first { $0.id == id }
-        let next = try change { $0.items.removeAll { $0.id == id } }
+        let next = try change { $0.items.removeAll { $0.id == id }; if $0.deletedItems == nil { $0.deletedItems = [:] }; $0.deletedItems?[id.uuidString] = Date() }
         for filename in [old?.localFilename, old?.subtitleFilename, old?.posterFilename].compactMap({ $0 }) {
             if let url = try? localURL(filename) { try? FileManager.default.removeItem(at: url) }
         }
@@ -71,6 +75,7 @@ actor LibraryRepository {
 
     func removeSource(_ id: UUID) throws -> LibrarySnapshot {
         try change {
+            if $0.deletedSources == nil { $0.deletedSources = [:] }; $0.deletedSources?[id.uuidString] = Date()
             $0.sources.removeAll { $0.id == id }
             $0.items.removeAll { $0.sourceID == id }
         }
@@ -89,11 +94,16 @@ actor LibraryRepository {
         let target = try localURL(filename)
         do {
             try await Task.detached(priority: .utility) { try FileManager.default.copyItem(at: source, to: target) }.value
+            let fingerprint = try await Task.detached(priority: .utility) { try ContentIdentity.fingerprint(target) }.value
+            if let old = try load().items.first(where: { $0.contentID == fingerprint }) {
+                return try update(old.id) { $0.localFilename = filename }
+            }
             let parsed = FilenameMetadata.parse(source.lastPathComponent)
             var item = MediaItem(title: title ?? parsed.title, localFilename: filename, year: parsed.year)
             item.season = parsed.season; item.episode = parsed.episode
             if parsed.episode != nil { item.mediaType = "tv"; item.seriesTitle = parsed.title }
             item.modifiedAt = Date()
+            item.contentID = fingerprint
             return try add(item)
         } catch {
             try? FileManager.default.removeItem(at: target)
@@ -108,8 +118,12 @@ actor LibraryRepository {
             state.items[index].position = position
             if duration > 0 { state.items[index].duration = duration }
             state.items[index].lastPlayedAt = capturedAt; state.items[index].modifiedAt = capturedAt
-            if duration > 0, position / duration >= 0.95 { state.items[index].watched = true }
+            if duration > 0, position / duration >= 0.95 { state.items[index].watched = true; state.items[index].watchedChangedAt = capturedAt }
         }
+    }
+
+    func mergeCloud(_ incoming: LibrarySnapshot) throws -> LibrarySnapshot {
+        try change { LibraryMerge.apply(incoming, to: &$0) }
     }
 
     func attachArtwork(_ source: URL, to id: UUID) throws -> LibrarySnapshot {

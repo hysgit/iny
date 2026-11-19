@@ -9,6 +9,7 @@ struct SettingsView: View {
     @AppStorage("privacyLock") private var privacyLock = false
     @AppStorage("automaticMetadata") private var automaticMetadata = false
     @AppStorage("serverTranscoding") private var transcoding = false
+    @AppStorage("cloudLibrarySync") private var cloudSync = false
     @State private var exporting = false
     @State private var document = LibraryExport(data: Data())
     var body: some View {
@@ -24,6 +25,8 @@ struct SettingsView: View {
             Section("服务") { NavigationLink("在线服务") { ServiceSettingsView() }; NavigationLink("Trakt") { TraktSettingsView() } }
             Section("隐私") { Toggle("使用设备密码或 Face ID 解锁", isOn: $privacyLock) }
             Section("媒体库") {
+                Toggle("iCloud 媒体库与进度同步", isOn: $cloudSync)
+                if cloudSync { Button("立即同步 iCloud") { Task { await store.synchronizeCloud() } } }
                 Toggle("自动匹配在线元数据", isOn: $automaticMetadata)
                 LabeledContent("影片数量", value: String(store.library.items.count))
                 LabeledContent("来源数量", value: String(store.library.sources.count))
