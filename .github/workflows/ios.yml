@@ -43,6 +43,8 @@ jobs:
             build 2>&1 | tee build/simulator.log
           ditto -c -k --sequesterRsrc --keepParent \
             build/DerivedData/Build/Products/Debug-iphonesimulator/Iny.app build/Iny-simulator.zip
+      - name: Launch Iny on iPhone and iPad simulators
+        run: python3 scripts/simulator_smoke.py --app build/DerivedData/Build/Products/Debug-iphonesimulator/Iny.app
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -50,3 +52,4 @@ jobs:
           path: |
             build/simulator.log
             build/Iny-simulator.zip
+            build/previews/
