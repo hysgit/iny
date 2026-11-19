@@ -15,7 +15,7 @@ def main():
     parser.add_argument("--swift-parser", action="store_true")
     args = parser.parse_args()
     errors = []
-    files = sorted((ROOT / "App").rglob("*.swift")) + sorted((ROOT / "Tests").rglob("*.swift")) + [ROOT / "Package.swift"]
+    files = sorted((ROOT / "App").rglob("*.swift")) + sorted((ROOT / "Tests").rglob("*.swift")) + sorted((ROOT / "UITests").rglob("*.swift")) + [ROOT / "Package.swift"]
     for file in files:
         text = file.read_text(encoding="utf-8")
         if "\ufffd" in text:

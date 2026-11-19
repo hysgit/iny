@@ -30,6 +30,7 @@ struct PlayerScreen: View {
             VStack {
                 HStack {
                     Button { Task { await checkpoint(stopped: true); model.stop(); dismiss() } } label: { Image(systemName: "xmark.circle.fill").font(.title) }
+                        .accessibilityLabel("关闭播放器").accessibilityIdentifier("player-close")
                     Text(item.title).font(.headline).lineLimit(1)
                     Spacer()
                     Button { settings = true } label: { Image(systemName: "slider.horizontal.3").font(.title2) }
@@ -49,6 +50,7 @@ struct PlayerScreen: View {
                             Spacer()
                             Button { model.seek(model.position - 15) } label: { Image(systemName: "gobackward.15") }
                             Button { model.toggle() } label: { Image(systemName: model.playing ? "pause.fill" : "play.fill").font(.title) }.padding(.horizontal, 20)
+                                .accessibilityIdentifier("playback-toggle").accessibilityLabel(model.playing ? "暂停" : "播放").accessibilityValue(model.playing ? "播放中" : "已暂停")
                             Button { model.seek(model.position + 15) } label: { Image(systemName: "goforward.15") }
                             Spacer()
                             Text(timestamp(model.duration)).monospacedDigit()

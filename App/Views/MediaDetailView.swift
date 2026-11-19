@@ -22,7 +22,7 @@ struct MediaDetailView: View {
                                 Text(item.title).font(.title2.bold())
                                 if let year = item.year { Text(String(year)).foregroundStyle(.secondary) }
                                 Text(item.isLocal ? "本地视频" : "网络视频").font(.caption).foregroundStyle(.secondary)
-                                Button { playback = item } label: { Label(item.position > 0 && !item.watched ? "继续播放" : "播放", systemImage: "play.fill").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)
+                                Button { playback = item } label: { Label(item.position > 0 && !item.watched ? "继续播放" : "播放", systemImage: "play.fill").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).accessibilityIdentifier("media-play")
                                 if item.position > 0 { Button("从头播放") { var beginning = item; beginning.position = 0; playback = beginning }.font(.caption) }
                             }
                         }

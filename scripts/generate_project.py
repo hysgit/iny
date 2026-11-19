@@ -39,8 +39,11 @@ def generate():
         resource_refs.append(ref)
         resource_builds.append(add(filename + ":build", f"isa = PBXBuildFile; fileRef = {ref};"))
     product = add("product", 'isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Iny.app; sourceTree = BUILT_PRODUCTS_DIR;')
-    products = add("products", f"isa = PBXGroup; children = ({product},); name = Products; sourceTree = \"<group>\";")
-    group = add("rootGroup", f"isa = PBXGroup; children = ({','.join(references + resource_refs + [info, assets, products])},); sourceTree = \"<group>\";")
+    ui_product = add("uiProduct", 'isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = InyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR;')
+    ui_ref = add("uiFile", 'isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UITests/PlaybackUITests.swift"; sourceTree = SOURCE_ROOT;')
+    ui_build = add("uiFileBuild", f"isa = PBXBuildFile; fileRef = {ui_ref};")
+    products = add("products", f"isa = PBXGroup; children = ({product},{ui_product},); name = Products; sourceTree = \"<group>\";")
+    group = add("rootGroup", f"isa = PBXGroup; children = ({','.join(references + resource_refs + [info, assets, ui_ref, products])},); sourceTree = \"<group>\";")
     package = add("smbPackage", 'isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/amosavian/AMSMB2.git"; requirement = { kind = exactVersion; version = 3.4.0; };')
     dependency = add("smbProduct", f"isa = XCSwiftPackageProductDependency; package = {package}; productName = AMSMB2;")
     framework = add("smbBuild", f"isa = PBXBuildFile; productRef = {dependency};")
@@ -74,7 +77,17 @@ def generate():
         "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
     })
     target = add("target", f"isa = PBXNativeTarget; buildConfigurationList = {target_config}; buildPhases = ({source_phase},{frameworks},{resources},); buildRules = (); dependencies = (); name = Iny; packageProductDependencies = ({dependency},); productName = Iny; productReference = {product}; productType = \"com.apple.product-type.application\";")
-    project = add("project", f"isa = PBXProject; attributes = {{ BuildIndependentTargetsInParallel = YES; LastSwiftUpdateCheck = 1600; LastUpgradeCheck = 1600; }}; buildConfigurationList = {project_config}; compatibilityVersion = \"Xcode 14.0\"; developmentRegion = zh_CN; hasScannedForEncodings = 0; knownRegions = (en, zh_CN, Base,); mainGroup = {group}; packageReferences = ({package},); productRefGroup = {products}; projectDirPath = \"\"; projectRoot = \"\"; targets = ({target},);")
+    ui_config = configurations("uiConfig", {
+        "PRODUCT_BUNDLE_IDENTIFIER": "net.icycloud.iny.uitests", "PRODUCT_NAME": "$(TARGET_NAME)",
+        "GENERATE_INFOPLIST_FILE": "YES", "TARGETED_DEVICE_FAMILY": "1,2", "TEST_TARGET_NAME": "Iny",
+        "CODE_SIGN_STYLE": "Automatic", "LD_RUNPATH_SEARCH_PATHS": "$(inherited) @executable_path/Frameworks @loader_path/Frameworks",
+    })
+    ui_sources = add("uiSources", f"isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = ({ui_build},); runOnlyForDeploymentPostprocessing = 0;")
+    ui_frameworks = add("uiFrameworks", "isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;")
+    ui_proxy = add("uiProxy", f"isa = PBXContainerItemProxy; containerPortal = {ident('project')}; proxyType = 1; remoteGlobalIDString = {target}; remoteInfo = Iny;")
+    ui_dependency = add("uiDependency", f"isa = PBXTargetDependency; target = {target}; targetProxy = {ui_proxy};")
+    ui_target = add("uiTarget", f"isa = PBXNativeTarget; buildConfigurationList = {ui_config}; buildPhases = ({ui_sources},{ui_frameworks},); buildRules = (); dependencies = ({ui_dependency},); name = InyUITests; productName = InyUITests; productReference = {ui_product}; productType = \"com.apple.product-type.bundle.ui-testing\";")
+    project = add("project", f"isa = PBXProject; attributes = {{ BuildIndependentTargetsInParallel = YES; LastSwiftUpdateCheck = 1600; LastUpgradeCheck = 1600; TargetAttributes = {{ {ui_target} = {{ TestTargetID = {target}; }}; }}; }}; buildConfigurationList = {project_config}; compatibilityVersion = \"Xcode 14.0\"; developmentRegion = zh_CN; hasScannedForEncodings = 0; knownRegions = (en, zh_CN, Base,); mainGroup = {group}; packageReferences = ({package},); productRefGroup = {products}; projectDirPath = \"\"; projectRoot = \"\"; targets = ({target},{ui_target},);")
     project_dir = ROOT / "Iny.xcodeproj"
     project_dir.mkdir(exist_ok=True)
     text = "// !$*UTF8*$!\n{\n\tarchiveVersion = 1;\n\tclasses = {};\n\tobjectVersion = 56;\n\tobjects = {\n" + "\n".join(objects) + f"\n\t}};\n\trootObject = {project};\n}}\n"
@@ -82,10 +95,11 @@ def generate():
     schemes = project_dir / "xcshareddata/xcschemes"
     schemes.mkdir(parents=True, exist_ok=True)
     reference = f'<BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="{target}" BuildableName="Iny.app" BlueprintName="Iny" ReferencedContainer="container:Iny.xcodeproj"/>'
+    test_reference = f'<BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="{ui_target}" BuildableName="InyUITests.xctest" BlueprintName="InyUITests" ReferencedContainer="container:Iny.xcodeproj"/>'
     scheme = f'''<?xml version="1.0" encoding="UTF-8"?>
 <Scheme LastUpgradeVersion="1600" version="1.3">
 <BuildAction parallelizeBuildables="YES" buildImplicitDependencies="YES"><BuildActionEntries><BuildActionEntry buildForTesting="YES" buildForRunning="YES" buildForProfiling="YES" buildForArchiving="YES" buildForAnalyzing="YES">{reference}</BuildActionEntry></BuildActionEntries></BuildAction>
-<TestAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.IDEFoundation.Launcher.LLDB" shouldUseLaunchSchemeArgsEnv="YES"><Testables/></TestAction>
+<TestAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.IDEFoundation.Launcher.LLDB" shouldUseLaunchSchemeArgsEnv="YES"><Testables><TestableReference skipped="NO">{test_reference}</TestableReference></Testables></TestAction>
 <LaunchAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.IDEFoundation.Launcher.LLDB" launchStyle="0" useCustomWorkingDirectory="NO" ignoresPersistentStateOnLaunch="NO" debugDocumentVersioning="YES" debugServiceExtension="internal" allowLocationSimulation="YES"><BuildableProductRunnable runnableDebuggingMode="0">{reference}</BuildableProductRunnable></LaunchAction>
 <ProfileAction buildConfiguration="Release" shouldUseLaunchSchemeArgsEnv="YES" savedToolIdentifier="" useCustomWorkingDirectory="NO" debugDocumentVersioning="YES"><BuildableProductRunnable runnableDebuggingMode="0">{reference}</BuildableProductRunnable></ProfileAction>
 <AnalyzeAction buildConfiguration="Debug"/><ArchiveAction buildConfiguration="Release" revealArchiveInOrganizer="YES"/>
