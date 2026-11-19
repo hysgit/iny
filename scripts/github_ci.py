@@ -1,4 +1,4 @@
-"""Create a private Iny repository and follow its macOS build. Never writes tokens."""
+"""Follow the user's hysgit/iny macOS build. Never writes tokens."""
 import argparse
 import json
 import os
@@ -54,15 +54,8 @@ def main():
     if user != "hysgit":
         raise RuntimeError("Expected the existing hysgit account; no repository was changed")
     repo_path = "/repos/hysgit/iny"
-    try:
-        repository = api(repo_path)
-    except urllib.error.HTTPError as error:
-        if error.code != 404:
-            raise
-        repository = api("/user/repos", "POST", {"name": "iny", "private": True, "description": "Iny native iPhone/iPad media player"})
-    if not repository["private"]:
-        raise RuntimeError("Refusing to push to a public repository")
-    print("Private repository: " + repository["html_url"], flush=True)
+    repository = api(repo_path)
+    print("User-specified repository: " + repository["html_url"], flush=True)
     if not args.watch_only:
         existing = subprocess.run(["git", "remote", "get-url", "origin"], cwd=ROOT, capture_output=True, text=True)
         if existing.returncode:
