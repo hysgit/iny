@@ -10,7 +10,7 @@ import uuid
 
 def command(*args):
     print("simctl " + args[0], flush=True)
-    timeout = 240 if args[0] == "bootstatus" else 90
+    timeout = 600 if args[0] == "bootstatus" else 120
     try:
         return subprocess.check_output(["xcrun", "simctl", *args], text=True, timeout=timeout)
     except subprocess.TimeoutExpired as error:
