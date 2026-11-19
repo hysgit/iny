@@ -159,6 +159,10 @@ final class AppStore: ObservableObject {
     }
 
     func report(_ item: MediaItem, position: Double, stopped: Bool, paused: Bool = false, started: Bool = false) async {
+        if UserDefaults.standard.bool(forKey: "traktScrobbling") {
+            do { try await TraktClient.shared.scrobble(item, position: position, duration: item.duration, action: stopped ? "stop" : (paused ? "pause" : "start")) }
+            catch { self.error = "Trakt 同步未完成：" + error.localizedDescription }
+        }
         guard let source = library.sources.first(where: { $0.id == item.sourceID }), let id = item.remoteID,
               [.jellyfin, .emby, .plex].contains(source.kind) else { return }
         do {

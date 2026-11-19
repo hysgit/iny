@@ -1,6 +1,6 @@
 import Foundation
 
-private enum DeviceIdentity {
+enum DeviceIdentity {
     static let value: String = {
         if let value = UserDefaults.standard.string(forKey: "mediaServerDeviceID") { return value }
         let value = UUID().uuidString
@@ -35,7 +35,7 @@ struct MediaServerClient {
     func authenticate() async throws -> (MediaSource, SourceSecret) {
         if source.kind == .plex {
             guard !secret.token.isEmpty else { throw AppError.message("请填写你的 Plex 访问令牌。") }
-            _ = try await HTTPClient.json(request("identity"))
+            _ = try await HTTPClient.json(request("library/sections"))
             return (source, secret)
         }
         let result = try await HTTPClient.json(request("Users/AuthenticateByName", method: "POST", body: ["Username": source.username, "Pw": secret.password]))
@@ -103,6 +103,17 @@ struct MediaServerClient {
     }
 
     func playback(id: String) async throws -> PlaybackResource {
+        if UserDefaults.standard.bool(forKey: "serverTranscoding") {
+            if source.kind == .plex {
+                let url = try URLTools.endpoint(source.endpoint, "video/:/transcode/universal/start.m3u8", query: ["path": "/library/metadata/\(id)", "mediaIndex": "0", "partIndex": "0", "protocol": "hls", "directPlay": "0", "directStream": "1", "maxVideoBitrate": "8000", "session": UUID().uuidString, "X-Plex-Token": secret.token, "X-Plex-Client-Identifier": DeviceIdentity.value])
+                return PlaybackResource(url: url)
+            }
+            let value = try await HTTPClient.json(request("Items/\(id)/PlaybackInfo", query: ["UserId": source.userID ?? ""], method: "POST", body: ["UserId": source.userID ?? "", "MaxStreamingBitrate": 8_000_000, "EnableDirectPlay": false, "EnableDirectStream": false,
+                "DeviceProfile": ["Name": "Iny", "MaxStreamingBitrate": 8_000_000, "TranscodingProfiles": [["Container": "ts", "Type": "Video", "Protocol": "hls", "VideoCodec": "h264", "AudioCodec": "aac", "MaxAudioChannels": "2"]]]]))
+            guard let first = (value["MediaSources"] as? [[String: Any]])?.first, let path = first["TranscodingUrl"] as? String,
+                  let url = URL(string: path, relativeTo: source.endpoint)?.absoluteURL, url.host == source.endpoint.host else { throw AppError.message("服务器没有提供可用转码流。") }
+            return PlaybackResource(url: url)
+        }
         if source.kind == .plex {
             let result = try await HTTPClient.json(request("library/metadata/\(id)"))
             guard let container = result["MediaContainer"] as? [String: Any],
