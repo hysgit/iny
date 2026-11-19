@@ -1,0 +1,13 @@
+*.ipa
+analysis/extracted/
+analysis/*-reference.txt
+Pods/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+DerivedData/
+.DS_Store
+*.xcuserstate
+build/
+.swiftpm/
+.build/
+__pycache__/
