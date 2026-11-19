@@ -51,6 +51,7 @@ struct MediaItem: Identifiable, Codable, Hashable, Sendable {
 
 struct LibrarySnapshot: Codable, Sendable {
     var version = 1
+    var revision: Int?
     var items: [MediaItem] = []
     var sources: [MediaSource] = []
 }
@@ -65,6 +66,8 @@ struct RemoteEntry: Identifiable, Hashable, Sendable {
     var year: Int?
     var duration: Double = 0
     var mediaType = "movie"
+    var position: Double = 0
+    var watched = false
 }
 
 struct PlaybackResource: Sendable {

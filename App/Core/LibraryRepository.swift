@@ -28,6 +28,7 @@ actor LibraryRepository {
     private func change(_ body: (inout LibrarySnapshot) throws -> Void) throws -> LibrarySnapshot {
         var next = try load()
         try body(&next)
+        next.revision = (next.revision ?? 0) + 1
         let bytes = try JSONEncoder().encode(next)
         try bytes.write(to: index, options: .atomic)
         snapshot = next
@@ -36,6 +37,9 @@ actor LibraryRepository {
 
     func add(_ item: MediaItem) throws -> LibrarySnapshot {
         try change { state in
+            if let sourceID = item.sourceID, !state.sources.contains(where: { $0.id == sourceID }) {
+                throw AppError.message("影片来源已移除，请重新添加来源。")
+            }
             if let sourceID = item.sourceID, let remoteID = item.remoteID,
                state.items.contains(where: { $0.sourceID == sourceID && $0.remoteID == remoteID }) { return }
             if let directURL = item.directURL, state.items.contains(where: { $0.directURL == directURL }) { return }

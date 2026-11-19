@@ -8,6 +8,7 @@ final class WebDAVParser: NSObject, XMLParserDelegate {
         var href = ""
         var properties: [String: String] = [:]
         var folder = false
+        var successful = false
     }
     private var responses: [Response] = []
     private var response = Response()
@@ -27,6 +28,7 @@ final class WebDAVParser: NSObject, XMLParserDelegate {
         parser.delegate = delegate
         guard parser.parse() else { throw AppError.message("WebDAV 目录 XML 无法解析。") }
         return delegate.responses.compactMap { value in
+            guard value.successful else { return nil }
             guard let url = URL(string: value.href, relativeTo: base)?.absoluteURL,
                   url.scheme?.lowercased() == base.scheme?.lowercased(),
                   url.host?.lowercased() == base.host?.lowercased(), url.port == base.port else { return nil }
@@ -58,6 +60,7 @@ final class WebDAVParser: NSObject, XMLParserDelegate {
         if name == "propstat" {
             if status.split(separator: " ").dropFirst().first.flatMap({ Int($0) }).map({ (200..<300).contains($0) }) == true {
                 response.properties.merge(props) { _, new in new }; response.folder = response.folder || folder
+                response.successful = true
             }
             inPropstat = false
         }

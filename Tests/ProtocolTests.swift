@@ -51,6 +51,11 @@ final class ProtocolTests: XCTestCase {
         XCTAssertThrowsError(try WebDAVParser.parse(Data("<multistatus><response>".utf8), relativeTo: URL(string: "https://nas.example")!))
     }
 
+    func testWebDAVRejectsFailedPropertyStatus() throws {
+        let xml = "<multistatus xmlns=\"DAV:\"><response><href>/missing.mkv</href><propstat><prop/><status>HTTP/1.1 404 Not Found</status></propstat></response></multistatus>"
+        XCTAssertTrue(try WebDAVParser.parse(Data(xml.utf8), relativeTo: URL(string: "https://nas.example/")!).isEmpty)
+    }
+
     func testProgressIsClamped() {
         var item = MediaItem(title: "video", duration: 100, position: 120)
         XCTAssertEqual(item.progress, 1)

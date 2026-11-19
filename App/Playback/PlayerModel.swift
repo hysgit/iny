@@ -89,7 +89,7 @@ final class PlayerModel: ObservableObject {
             playing = vlc.isPlaying
             buffering = vlc.state == .opening || vlc.state == .buffering
             if vlc.state == .error { error = "视频打开失败，请检查共享权限、网络和文件格式。" }
-            if vlc.state == .ended { finished = true }
+            if vlc.state == .ended { position = duration; finished = true }
             audioTracks = tracks(names: vlc.audioTrackNames, ids: vlc.audioTrackIndexes)
             subtitleTracks = tracks(names: vlc.videoSubTitlesNames, ids: vlc.videoSubTitlesIndexes)
             audioID = vlc.currentAudioTrackIndex; subtitleID = vlc.currentVideoSubTitleIndex

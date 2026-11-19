@@ -19,6 +19,7 @@ final class LibraryRepositoryTests: XCTestCase {
         }
         let result = try await repository.load()
         XCTAssertEqual(result.items.count, 100)
+        XCTAssertEqual(result.revision, 100)
         let reopened = LibraryRepository(directory: await repository.directory)
         let reloaded = try await reopened.load()
         XCTAssertEqual(Set(reloaded.items.map(\.id)), Set(result.items.map(\.id)))
@@ -26,10 +27,13 @@ final class LibraryRepositoryTests: XCTestCase {
 
     func testRemoteIdentityIsDeduplicatedPerSource() async throws {
         let repository = try LibraryRepository(directory: directory())
-        let source = UUID()
-        _ = try await repository.add(MediaItem(title: "one", sourceID: source, remoteID: "same"))
-        _ = try await repository.add(MediaItem(title: "two", sourceID: source, remoteID: "same"))
-        _ = try await repository.add(MediaItem(title: "three", sourceID: UUID(), remoteID: "same"))
+        let first = MediaSource(name: "one", kind: .webdav, endpoint: URL(string: "https://one.example")!)
+        let second = MediaSource(name: "two", kind: .webdav, endpoint: URL(string: "https://two.example")!)
+        _ = try await repository.addSource(first)
+        _ = try await repository.addSource(second)
+        _ = try await repository.add(MediaItem(title: "one", sourceID: first.id, remoteID: "same"))
+        _ = try await repository.add(MediaItem(title: "two", sourceID: first.id, remoteID: "same"))
+        _ = try await repository.add(MediaItem(title: "three", sourceID: second.id, remoteID: "same"))
         let result = try await repository.load()
         XCTAssertEqual(result.items.count, 2)
     }
@@ -97,5 +101,6 @@ final class LibraryRepositoryTests: XCTestCase {
         let result = try await repository.removeSource(source.id)
         XCTAssertTrue(result.sources.isEmpty)
         XCTAssertEqual(result.items.map(\.title), ["local"])
+        do { _ = try await repository.add(MediaItem(title: "late network result", sourceID: source.id, remoteID: "2")); XCTFail("Removed source was resurrected") } catch { }
     }
 }

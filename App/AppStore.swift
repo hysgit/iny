@@ -17,7 +17,7 @@ final class AppStore: ObservableObject {
     }
 
     func load() async {
-        do { library = try await repository.load(); loaded = true }
+        do { try await refresh(); loaded = true }
         catch { self.error = "媒体库读取失败，原文件已保留。\n" + error.localizedDescription }
     }
 
@@ -27,8 +27,11 @@ final class AppStore: ObservableObject {
         catch { self.error = error.localizedDescription }
     }
 
-    // 从 actor 再读取当前快照，避免较早事务的返回值覆盖较新的界面状态。
-    func refresh() async throws { library = try await repository.load() }
+    // actor 返回顺序与主线程恢复顺序可能不同，只接受不早于当前版本的快照。
+    func refresh() async throws {
+        let next = try await repository.load()
+        if (next.revision ?? 0) >= (library.revision ?? 0) { library = next }
+    }
 
     func importFiles(_ urls: [URL]) async {
         activity = "正在导入视频…"
@@ -66,6 +69,7 @@ final class AppStore: ObservableObject {
     }
 
     func removeSource(_ source: MediaSource) async throws {
+        for item in library.items where item.sourceID == source.id { downloads[item.id]?.cancel() }
         _ = try await repository.removeSource(source.id)
         try await refresh()
         try KeychainVault.delete(account: source.id.uuidString)
@@ -83,7 +87,7 @@ final class AppStore: ObservableObject {
     func addEntry(_ entry: RemoteEntry, source: MediaSource) async throws -> MediaItem {
         let item = MediaItem(title: entry.name, sourceID: source.id, remoteID: entry.id, remotePath: entry.path,
                              posterURL: entry.posterURL, overview: entry.overview, year: entry.year,
-                             duration: entry.duration, mediaType: entry.mediaType)
+                             duration: entry.duration, position: entry.position, watched: entry.watched, mediaType: entry.mediaType)
         _ = try await repository.add(item)
         try await refresh()
         return library.items.first { $0.sourceID == source.id && $0.remoteID == entry.id } ?? item

@@ -116,6 +116,7 @@ struct PlayerScreen: View {
     }
 
     private func checkpoint(stopped: Bool) async {
+        guard model.position > 0 || model.duration > 0 else { return }
         let position = model.position; let duration = model.duration
         await store.perform { try await store.progress(item, position: position, duration: duration) }
         await store.report(item, position: position, stopped: stopped, paused: !model.playing)

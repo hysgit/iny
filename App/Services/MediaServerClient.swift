@@ -52,10 +52,13 @@ struct MediaServerClient {
                 guard let id = value["Id"] as? String, let name = value["Name"] as? String else { continue }
                 let folder = value["IsFolder"] as? Bool ?? false
                 guard folder || value["MediaType"] as? String == "Video" else { continue }
+                let userData = value["UserData"] as? [String: Any] ?? [:]
                 result.append(RemoteEntry(id: id, name: name, isDirectory: folder, path: id,
                                           overview: value["Overview"] as? String ?? "", year: value["ProductionYear"] as? Int,
                                           duration: (value["RunTimeTicks"] as? Double ?? 0) / 10_000_000,
-                                          mediaType: value["Type"] as? String == "Episode" ? "tv" : "movie"))
+                                          mediaType: value["Type"] as? String == "Episode" ? "tv" : "movie",
+                                          position: (userData["PlaybackPositionTicks"] as? Double ?? 0) / 10_000_000,
+                                          watched: userData["Played"] as? Bool ?? false))
             }
             offset += items.count
             let total = response["TotalRecordCount"] as? Int
@@ -81,7 +84,8 @@ struct MediaServerClient {
                 let id = parent == nil ? "section:" + key : key
                 entries.append(RemoteEntry(id: id, name: title, isDirectory: parent == nil || ["show", "season", "artist", "album"].contains(type), path: id,
                                            overview: item["summary"] as? String ?? "", year: item["year"] as? Int,
-                                           duration: (item["duration"] as? Double ?? 0) / 1000, mediaType: type == "episode" ? "tv" : "movie"))
+                                           duration: (item["duration"] as? Double ?? 0) / 1000, mediaType: type == "episode" ? "tv" : "movie",
+                                           position: (item["viewOffset"] as? Double ?? 0) / 1000, watched: (item["viewCount"] as? Int ?? 0) > 0))
             }
             offset += values.count
             if values.isEmpty || offset >= (container["totalSize"] as? Int ?? offset) { break }
