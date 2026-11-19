@@ -46,7 +46,8 @@ def main():
             time.sleep(4)
             image = args.output / ("Iny-" + family.lower() + ".png")
             command("io", identifier, "screenshot", str(image))
-            records.append({"device": device["name"], "family": family, "udid": identifier, "launch": launched.strip(), "screenshot": image.name})
+            data_directory = device.get("dataPath", str(Path.home() / "Library/Developer/CoreSimulator/Devices" / identifier / "data"))
+            records.append({"device": device["name"], "family": family, "udid": identifier, "dataDirectory": data_directory, "launch": launched.strip(), "screenshot": image.name})
             if args.fixture and family == "iPhone":
                 # 先停止应用，再给独占的 CI 模拟器准备样片，避免与应用事务并发写索引。
                 command("terminate", identifier, "net.icycloud.iny")

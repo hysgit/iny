@@ -2,14 +2,23 @@
 import json
 from pathlib import Path
 import shutil
-import subprocess
+import plistlib
 
 records = json.loads(Path("build/previews/launches.json").read_text())
-device = next(item["udid"] for item in records if item["family"] == "iPhone")
+device = next(item for item in records if item["family"] == "iPhone")
 
 
 def container(identifier):
-    return Path(subprocess.check_output(["xcrun", "simctl", "get_app_container", device, identifier, "data"], text=True).strip())
+    # Xcode 在 UI 测试结束后关闭模拟器；直接读取该 CI 设备的宿主目录。
+    root = Path(device["dataDirectory"]) / "Containers/Data/Application"
+    for candidate in root.iterdir():
+        metadata = candidate / ".com.apple.mobile_container_manager.metadata.plist"
+        if metadata.is_file():
+            with metadata.open("rb") as source:
+                info = plistlib.load(source)
+            if info.get("MCMMetadataIdentifier") == identifier:
+                return candidate
+    raise RuntimeError("Test simulator container not found for " + identifier)
 
 
 library = json.loads((container("net.icycloud.iny") / "Documents/Library/library.json").read_text())
