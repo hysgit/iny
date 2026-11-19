@@ -42,6 +42,7 @@ struct MediaItem: Identifiable, Codable, Hashable, Sendable {
     var title: String
     // 本地只存 Documents 下的相对文件名；远程只存资源标识，不存带令牌的播放 URL。
     var localFilename: String?
+    var systemAssetPath: String?
     var sourceID: UUID?
     var remoteID: String?
     var remotePath: String?
@@ -72,7 +73,7 @@ struct MediaItem: Identifiable, Codable, Hashable, Sendable {
     var watchedChangedAt: Date?
     var metadataChangedAt: Date?
     var progress: Double { duration > 0 ? min(max(position / duration, 0), 1) : 0 }
-    var isLocal: Bool { localFilename != nil }
+    var isLocal: Bool { localFilename != nil || systemAssetPath != nil }
 }
 
 struct MediaPerson: Codable, Hashable, Identifiable, Sendable {
