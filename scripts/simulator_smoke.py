@@ -9,7 +9,15 @@ import uuid
 
 
 def command(*args):
-    return subprocess.check_output(["xcrun", "simctl", *args], text=True)
+    print("simctl " + args[0], flush=True)
+    timeout = 240 if args[0] == "bootstatus" else 90
+    try:
+        return subprocess.check_output(["xcrun", "simctl", *args], text=True, timeout=timeout)
+    except subprocess.TimeoutExpired as error:
+        print("Timed out in simctl " + args[0], flush=True)
+        if error.output:
+            print(str(error.output)[-2000:], flush=True)
+        raise
 
 
 def main():
@@ -17,12 +25,13 @@ def main():
     parser.add_argument("--app", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=Path("build/previews"))
     parser.add_argument("--fixture", type=Path)
+    parser.add_argument("--family", choices=["all", "iPhone", "iPad"], default="all")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     devices = json.loads(command("list", "devices", "available", "--json"))["devices"]
     candidates = [device for runtime in sorted(devices, reverse=True) if ".iOS-" in runtime for device in devices[runtime] if device.get("isAvailable")]
     records = []
-    for family in ["iPhone", "iPad"]:
+    for family in (["iPhone", "iPad"] if args.family == "all" else [args.family]):
         device = next((device for device in candidates if device["name"].startswith(family)), None)
         if not device:
             raise RuntimeError("No available " + family + " simulator")
