@@ -1,0 +1,55 @@
+workflows:
+  iny-ios-validate:
+    name: Iny iOS 编译与核心测试
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Test media library and protocol parsers
+        script: swift test
+      - name: Install VLC
+        script: pod install --repo-update
+      - name: Compile for iPhone and iPad simulator
+        script: |
+          set -o pipefail
+          xcodebuild -workspace Iny.xcworkspace -scheme Iny \
+            -configuration Debug -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee build/simulator.log
+    artifacts:
+      - build/simulator.log
+      - build/DerivedData/Build/Products/Debug-iphonesimulator/Iny.app
+
+  iny-ios-testflight:
+    name: Iny TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 90
+    integrations:
+      app_store_connect: tudo
+    environment:
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: net.icycloud.iny
+    scripts:
+      - name: Run core tests
+        script: swift test
+      - name: Install VLC
+        script: pod install --repo-update
+      - name: Apply Iny provisioning profiles
+        script: xcode-project use-profiles
+      - name: Build signed Iny IPA
+        script: |
+          xcode-project build-ipa --workspace Iny.xcworkspace --scheme Iny \
+            --archive-xcargs="CURRENT_PROJECT_VERSION=$BUILD_NUMBER"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/**/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
