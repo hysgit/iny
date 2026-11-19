@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 import subprocess
 import time
+import shutil
+import uuid
 
 
 def command(*args):
@@ -14,6 +16,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--app", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=Path("build/previews"))
+    parser.add_argument("--fixture", type=Path)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     devices = json.loads(command("list", "devices", "available", "--json"))["devices"]
@@ -34,7 +37,18 @@ def main():
             time.sleep(4)
             image = args.output / ("Iny-" + family.lower() + ".png")
             command("io", identifier, "screenshot", str(image))
-            records.append({"device": device["name"], "family": family, "launch": launched.strip(), "screenshot": image.name})
+            records.append({"device": device["name"], "family": family, "udid": identifier, "launch": launched.strip(), "screenshot": image.name})
+            if args.fixture and family == "iPhone":
+                # 先停止应用，再给独占的 CI 模拟器准备样片，避免与应用事务并发写索引。
+                command("terminate", identifier, "net.icycloud.iny")
+                container = Path(command("get_app_container", identifier, "net.icycloud.iny", "data").strip())
+                library = container / "Documents/Library"
+                library.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(args.fixture, library / "playback.mp4")
+                item = {"id": str(uuid.uuid4()).upper(), "title": "Iny 播放验收样片", "localFilename": "playback.mp4",
+                        "overview": "", "duration": 0, "position": 0, "watched": False, "favorite": False,
+                        "addedAt": time.time() - 978307200, "mediaType": "movie"}
+                (library / "library.json").write_text(json.dumps({"version": 1, "revision": 1, "items": [item], "sources": []}), encoding="utf-8")
         finally:
             if booted_here:
                 command("shutdown", identifier)

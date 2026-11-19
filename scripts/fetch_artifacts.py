@@ -74,7 +74,7 @@ def main():
             destination = (folder / member.filename).resolve()
             if not destination.is_relative_to(folder.resolve()) or ((member.external_attr >> 16) & 0o170000) == 0o120000:
                 raise RuntimeError("Unsafe artifact archive member")
-            if not args.previews_only or member.filename.endswith((".png", "launches.json")):
+            if not args.previews_only or member.filename.endswith((".png", "launches.json", "playback-result.json")):
                 archive.extract(member, folder)
                 retained.append(member.filename)
     print(json.dumps({"run": args.run_id, "artifact": selected["name"], "files": retained, "directory": str(folder)}, indent=2))

@@ -44,12 +44,23 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent \
             build/DerivedData/Build/Products/Debug-iphonesimulator/Iny.app build/Iny-simulator.zip
       - name: Launch Iny on iPhone and iPad simulators
-        run: python3 scripts/simulator_smoke.py --app build/DerivedData/Build/Products/Debug-iphonesimulator/Iny.app
+        run: python3 scripts/simulator_smoke.py --app build/DerivedData/Build/Products/Debug-iphonesimulator/Iny.app --fixture UITests/Fixtures/playback.mp4
+      - name: Verify real video playback, pause and saved progress
+        run: |
+          SIMULATOR_ID=$(python3 -c "import json; print(next(x['udid'] for x in json.load(open('build/previews/launches.json')) if x['family']=='iPhone'))")
+          set -o pipefail
+          xcodebuild test -workspace Iny.xcworkspace -scheme Iny -configuration Debug \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -derivedDataPath build/DerivedData -parallel-testing-enabled NO \
+            -only-testing:InyUITests -resultBundlePath build/Playback.xcresult \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/playback.log
+          python3 scripts/verify_playback.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: Iny-iOS-build
           path: |
             build/simulator.log
+            build/playback.log
             build/Iny-simulator.zip
             build/previews/
