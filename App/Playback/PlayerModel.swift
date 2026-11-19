@@ -56,7 +56,7 @@ final class PlayerModel: ObservableObject {
         #else
         usesVLC = false
         guard resource.username?.isEmpty != false, resource.url.scheme != "smb" else {
-            throw AppError.message("认证共享播放需要 VLC。请在 Mac 执行 pod install 并打开 xcworkspace。")
+            throw AppError.message("此版本暂不支持认证共享播放，请安装包含 VLC 的完整播放器版本。")
         }
         if subtitle != nil { throw AppError.message("外部字幕需要 VLC。请切换到完整 VLC 构建。") }
         openNative(resource.url, resume: resume)

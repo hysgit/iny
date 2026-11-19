@@ -30,7 +30,8 @@ struct SettingsView: View {
             }
             Section("关于") {
                 LabeledContent("Iny", value: "0.1.0")
-                Text("根据 IPA 中可读取的配置和资源重新编写。功能覆盖与原版差异详见工程内的功能对照表。").font(.footnote).foregroundStyle(.secondary)
+                Text("你的本地视频与家庭媒体库。").font(.footnote).foregroundStyle(.secondary)
+                NavigationLink("开源组件") { OpenSourceView() }
                 Link("VLC 开源许可", destination: URL(string: "https://www.videolan.org/vlc/libvlc.html")!)
                 Link("TMDB", destination: URL(string: "https://www.themoviedb.org")!)
             }
@@ -38,6 +39,19 @@ struct SettingsView: View {
         .fileExporter(isPresented: $exporting, document: document, contentType: .json, defaultFilename: "media-library") { result in
             if case .failure(let error) = result { store.error = error.localizedDescription }
         }
+    }
+}
+
+private struct OpenSourceView: View {
+    var body: some View {
+        ScrollView {
+            Text(license).font(.caption.monospaced()).textSelection(.enabled).padding()
+        }.navigationTitle("开源组件")
+    }
+    private var license: String {
+        guard let url = Bundle.main.url(forResource: "ThirdPartyNotices", withExtension: "txt"),
+              let text = try? String(contentsOf: url, encoding: .utf8) else { return "MobileVLCKit 与 AMSMB2 使用 LGPL 2.1 许可。" }
+        return text
     }
 }
 

@@ -32,15 +32,21 @@ def generate():
     info = add("info", 'isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "App/Info.plist"; sourceTree = SOURCE_ROOT;')
     assets = add("assets", 'isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "App/Assets.xcassets"; sourceTree = SOURCE_ROOT;')
     assets_build = add("assetsBuild", f"isa = PBXBuildFile; fileRef = {assets};")
+    resource_refs = []
+    resource_builds = [assets_build]
+    for filename, filetype in [("PrivacyInfo.xcprivacy", "text.xml"), ("ThirdPartyNotices.txt", "text")]:
+        ref = add(filename, f"isa = PBXFileReference; lastKnownFileType = {filetype}; path = {quoted('App/' + filename)}; sourceTree = SOURCE_ROOT;")
+        resource_refs.append(ref)
+        resource_builds.append(add(filename + ":build", f"isa = PBXBuildFile; fileRef = {ref};"))
     product = add("product", 'isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Iny.app; sourceTree = BUILT_PRODUCTS_DIR;')
     products = add("products", f"isa = PBXGroup; children = ({product},); name = Products; sourceTree = \"<group>\";")
-    group = add("rootGroup", f"isa = PBXGroup; children = ({','.join(references + [info, assets, products])},); sourceTree = \"<group>\";")
+    group = add("rootGroup", f"isa = PBXGroup; children = ({','.join(references + resource_refs + [info, assets, products])},); sourceTree = \"<group>\";")
     package = add("smbPackage", 'isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/amosavian/AMSMB2.git"; requirement = { kind = exactVersion; version = 3.4.0; };')
     dependency = add("smbProduct", f"isa = XCSwiftPackageProductDependency; package = {package}; productName = AMSMB2;")
     framework = add("smbBuild", f"isa = PBXBuildFile; productRef = {dependency};")
     source_phase = add("sources", f"isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = ({','.join(sources)},); runOnlyForDeploymentPostprocessing = 0;")
     frameworks = add("frameworks", f"isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = ({framework},); runOnlyForDeploymentPostprocessing = 0;")
-    resources = add("resources", f"isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = ({assets_build},); runOnlyForDeploymentPostprocessing = 0;")
+    resources = add("resources", f"isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = ({','.join(resource_builds)},); runOnlyForDeploymentPostprocessing = 0;")
 
     def configurations(prefix, settings):
         configs = []

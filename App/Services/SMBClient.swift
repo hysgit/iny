@@ -22,7 +22,7 @@ struct SMBClient {
             return RemoteEntry(id: filePath, name: name, isDirectory: folder, path: filePath)
         }.sorted { a, b in a.isDirectory != b.isDirectory ? a.isDirectory : a.name.localizedStandardCompare(b.name) == .orderedAscending }
         #else
-        throw AppError.message("此构建未链接 AMSMB2。请使用完整 Xcode 工程解析 Swift Package 依赖。")
+        throw AppError.message("此版本暂不支持 SMB，请使用 WebDAV 或从“文件”导入。")
         #endif
     }
 

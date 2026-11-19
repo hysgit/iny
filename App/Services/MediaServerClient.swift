@@ -1,5 +1,14 @@
 import Foundation
 
+private enum DeviceIdentity {
+    static let value: String = {
+        if let value = UserDefaults.standard.string(forKey: "mediaServerDeviceID") { return value }
+        let value = UUID().uuidString
+        UserDefaults.standard.set(value, forKey: "mediaServerDeviceID")
+        return value
+    }()
+}
+
 struct MediaServerClient {
     var source: MediaSource
     var secret: SourceSecret
@@ -11,9 +20,9 @@ struct MediaServerClient {
         if source.kind == .plex {
             request.setValue(secret.token, forHTTPHeaderField: "X-Plex-Token")
             request.setValue("Iny", forHTTPHeaderField: "X-Plex-Product")
-            request.setValue("local-iny", forHTTPHeaderField: "X-Plex-Client-Identifier")
+            request.setValue(DeviceIdentity.value, forHTTPHeaderField: "X-Plex-Client-Identifier")
         } else {
-            request.setValue("MediaBrowser Client=\"Iny\", Device=\"iOS\", DeviceId=\"local-iny\", Version=\"0.1.0\"", forHTTPHeaderField: "Authorization")
+            request.setValue("MediaBrowser Client=\"Iny\", Device=\"iOS\", DeviceId=\"\(DeviceIdentity.value)\", Version=\"0.1.0\"", forHTTPHeaderField: "Authorization")
             if !secret.token.isEmpty { request.setValue(secret.token, forHTTPHeaderField: "X-Emby-Token") }
         }
         if let body {

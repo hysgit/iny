@@ -85,7 +85,7 @@ enum AppError: LocalizedError {
         switch self {
         case .message(let text): return text
         case .http(let code): return "服务器返回 HTTP \(code)。请检查地址、权限和登录信息。"
-        case .invalidURL: return "地址无效，请输入完整的 http:// 或 https:// 地址。"
+        case .invalidURL: return "地址无效，请输入与所选来源类型一致的完整服务器地址。"
         case .invalidResponse: return "服务器响应格式不正确。"
         }
     }
