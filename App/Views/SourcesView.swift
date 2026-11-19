@@ -29,7 +29,7 @@ struct SourcesView: View {
                 Text("也可从 iOS“文件”中的 iCloud Drive、第三方云盘或 SMB 位置选择视频并导入。").font(.footnote).foregroundStyle(.secondary)
             }
         }.navigationTitle("文件")
-        .sheet(isPresented: $adding) { SourceForm() }
+        .sheet(isPresented: $adding) { PrivacyGate { SourceForm() } }
         .videoImporter(isPresented: $importing)
         .confirmationDialog("删除此来源及其媒体库记录？本地导入的视频会保留。", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible) {
             Button("删除来源", role: .destructive) { if let source = deleting { Task { await store.perform { try await store.removeSource(source) } } }; deleting = nil }

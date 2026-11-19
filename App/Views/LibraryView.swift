@@ -104,7 +104,7 @@ struct LibraryView: View {
             }
         }
         .videoImporter(isPresented: $importing)
-        .sheet(isPresented: $stream) { StreamForm() }
+        .sheet(isPresented: $stream) { PrivacyGate { StreamForm() } }
         .fullScreenCover(item: $playback) { item in PlayerScreen(item: item, queue: items) }
     }
 }

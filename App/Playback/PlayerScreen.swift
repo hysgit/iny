@@ -17,7 +17,9 @@ struct PlayerScreen: View {
     @AppStorage("playbackSpeed") private var speed = 1.0
     @AppStorage("continuousPlayback") private var continuous = true
 
-    var body: some View {
+    var body: some View { PrivacyGate { playerContent } }
+
+    private var playerContent: some View {
         ZStack {
             Color.black.ignoresSafeArea()
             if model.usesVLC {
@@ -75,7 +77,7 @@ struct PlayerScreen: View {
         }
         .onDisappear { model.stop() }
         .sheet(isPresented: $settings) {
-            NavigationStack {
+            PrivacyGate { NavigationStack {
                 Form {
                     Section("播放速度") {
                         Picker("速度", selection: Binding(get: { Double(model.rate) }, set: { model.setRate(Float($0)) })) {
@@ -101,7 +103,7 @@ struct PlayerScreen: View {
                         }
                     } else { Text("系统播放器的字幕、音轨、画中画和 AirPlay 可在播放控制栏中选择。") }
                 }.navigationTitle("播放设置").toolbar { Button("完成") { settings = false } }
-            }.presentationDetents([.medium, .large])
+            }.presentationDetents([.medium, .large]) }
         }
     }
 

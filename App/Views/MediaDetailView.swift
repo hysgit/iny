@@ -46,8 +46,8 @@ struct MediaDetailView: View {
                 }.navigationTitle("影片详情").navigationBarTitleDisplayMode(.inline)
                 .toolbar { Button(role: .destructive) { deleting = true } label: { Image(systemName: "trash") } }
                 .fullScreenCover(item: $playback) { playing in PlayerScreen(item: playing, queue: store.library.items.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }) }
-                .sheet(isPresented: $metadata) { MetadataSearchView(item: item) }
-                .sheet(isPresented: $subtitles) { SubtitleSearchView(item: item) }
+                .sheet(isPresented: $metadata) { PrivacyGate { MetadataSearchView(item: item) } }
+                .sheet(isPresented: $subtitles) { PrivacyGate { SubtitleSearchView(item: item) } }
                 .fileImporter(isPresented: $subtitleImport, allowedContentTypes: [.data]) { result in
                     Task { await store.perform { try await store.attachSubtitle(result.get(), item: item) } }
                 }
